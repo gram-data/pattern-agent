@@ -1,50 +1,100 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+Version: 0.0.0 → 1.0.0
+Change Type: MAJOR (initial constitution creation)
+Modified Principles: N/A (new)
+Added Sections: All sections (initial creation)
+Removed Sections: N/A
+Templates Requiring Updates:
+  - ✅ updated: .specify/templates/plan-template.md (added Constitution Check with all 4 principles)
+  - ✅ updated: .specify/templates/spec-template.md (added User Goal & Rationale section, enhanced testing sections)
+  - ✅ updated: .specify/templates/tasks-template.md (updated to emphasize dual testing strategy, expressiveness/correctness)
+  - ⚠ pending: .specify/templates/commands/*.md (needs review for any outdated references)
+Follow-up TODOs: None
+-->
 
-## Core Principles
+# Project Constitution
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+**Project:** pattern-agent  
+**Version:** 1.0.0  
+**Ratification Date:** 2025-01-27  
+**Last Amended:** 2025-01-27
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+## Purpose
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+This constitution establishes the non-negotiable principles and governance rules for the pattern-agent project. All development work MUST align with these principles. Amendments require explicit review and versioning.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+## Principles
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### Principle 1: Design-Driven Development
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+**Rule:** All feature development MUST begin with design validation against a stated user goal. Design decisions MUST be justified by how they satisfy the user goal before implementation begins.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+**Rationale:** Features exist to serve user needs. Starting with design validation ensures we build the right thing before investing in implementation. This prevents wasted effort on solutions that don't address actual user problems.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Enforcement:** 
+- Feature proposals MUST include a clear user goal statement
+- Design reviews MUST validate that the proposed design satisfies the stated goal
+- Implementation MUST NOT proceed until design validation is complete
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### Principle 2: Why Before How
+
+**Rule:** Before planning implementation, developers MUST establish WHY a feature is being created by asking clarifying questions. The rationale for a feature MUST be documented and validated before HOW it will be built is determined.
+
+**Rationale:** Understanding the underlying motivation prevents premature optimization and ensures we solve the right problem. Clarifying questions surface assumptions and reveal whether a feature is truly necessary or if existing capabilities can be extended.
+
+**Enforcement:**
+- Feature requests MUST include or prompt for a "why" statement
+- Design sessions MUST begin with rationale exploration
+- Implementation plans MUST reference the documented "why"
+
+### Principle 3: Dual Testing Strategy
+
+**Rule:** All features MUST be tested at both unit-test level and scenario level. Scenario tests MUST simulate how a user goal can be satisfied end-to-end.
+
+**Rationale:** Unit tests verify correctness of components in isolation, while scenario tests validate that the system actually satisfies user goals. Both are necessary: unit tests catch implementation bugs, scenario tests catch design gaps.
+
+**Enforcement:**
+- Every feature MUST have unit tests covering its components
+- Every feature MUST have at least one scenario test demonstrating user goal satisfaction
+- Scenario tests MUST be written from the user's perspective, not the implementation's
+
+### Principle 4: Expressiveness and Correctness
+
+**Rule:** All features MUST prioritize both expressiveness (clarity of intent and usage) and correctness (accurate behavior). Code MUST be written to clearly communicate its purpose, and MUST behave correctly under all specified conditions.
+
+**Rationale:** Expressiveness enables maintainability and reduces cognitive load. Correctness ensures reliability and trust. Both are essential for a framework that others will build upon. Expressiveness without correctness is misleading; correctness without expressiveness is fragile.
+
+**Enforcement:**
+- Code reviews MUST evaluate both clarity and correctness
+- APIs MUST be designed for intuitive use
+- Documentation MUST accurately reflect behavior
+- Edge cases MUST be handled explicitly
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+### Amendment Procedure
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+1. Proposed amendments MUST be documented with rationale
+2. Amendments affecting principles require review and consensus
+3. Version MUST be updated according to semantic versioning rules
+4. Sync Impact Report MUST be updated in the constitution header
+5. Dependent templates and documentation MUST be updated
+
+### Versioning Policy
+
+- **MAJOR:** Backward incompatible governance/principle removals or redefinitions
+- **MINOR:** New principle/section added or materially expanded guidance
+- **PATCH:** Clarifications, wording, typo fixes, non-semantic refinements
+
+### Compliance Review
+
+- All feature work MUST reference relevant principles
+- Code reviews MUST verify principle compliance
+- Design reviews MUST validate against Principle 1 and Principle 2
+- Test reviews MUST verify Principle 3 compliance
+- Code quality reviews MUST verify Principle 4 compliance
+
+## Notes
+
+This constitution is a living document. As the project evolves, principles may be refined based on practical experience, but changes require explicit amendment and versioning.

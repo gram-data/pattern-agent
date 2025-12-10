@@ -31,7 +31,25 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+### Principle 1: Design-Driven Development
+- [ ] **User Goal Statement**: Clear user goal documented in spec.md
+- [ ] **Design Validation**: Proposed design validated against user goal
+- [ ] **Rationale**: Design decisions justified by user goal satisfaction
+
+### Principle 2: Why Before How
+- [ ] **Why Documented**: Rationale for feature creation is documented
+- [ ] **Clarifying Questions**: Questions asked and answered to establish WHY
+- [ ] **Implementation Plan References Why**: This plan references the documented rationale
+
+### Principle 3: Dual Testing Strategy
+- [ ] **Unit Tests Planned**: Unit-level tests identified for components
+- [ ] **Scenario Tests Planned**: Scenario tests identified that simulate user goal satisfaction
+- [ ] **Test Strategy**: Both unit and scenario testing approaches defined
+
+### Principle 4: Expressiveness and Correctness
+- [ ] **API Design**: APIs designed for intuitive use and clarity
+- [ ] **Edge Cases**: Edge cases identified and handling planned
+- [ ] **Documentation Plan**: Documentation strategy ensures accuracy and clarity
 
 ## Project Structure
 

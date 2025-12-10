@@ -5,7 +5,20 @@
 **Status**: Draft  
 **Input**: User description: "$ARGUMENTS"
 
-## User Scenarios & Testing *(mandatory)*
+## User Goal & Rationale *(mandatory - Principle 2: Why Before How)*
+
+**User Goal**: [Clear statement of what user goal this feature satisfies]
+
+**Why This Feature**: [Rationale for why this feature is being created. What problem does it solve? What need does it address?]
+
+**Clarifying Questions Asked**:
+- [Question 1]: [Answer]
+- [Question 2]: [Answer]
+- [Additional questions as needed]
+
+**Design Validation**: [How the proposed design satisfies the stated user goal - to be completed during design phase per Principle 1]
+
+## User Scenarios & Testing *(mandatory - Principle 3: Dual Testing Strategy)*
 
 <!--
   IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
@@ -28,10 +41,14 @@
 
 **Independent Test**: [Describe how this can be tested independently - e.g., "Can be fully tested by [specific action] and delivers [specific value]"]
 
-**Acceptance Scenarios**:
+**Acceptance Scenarios** (Scenario Tests - Principle 3):
 
 1. **Given** [initial state], **When** [action], **Then** [expected outcome]
 2. **Given** [initial state], **When** [action], **Then** [expected outcome]
+
+**Unit Test Coverage** (Principle 3):
+- [Component 1]: [What unit tests will verify]
+- [Component 2]: [What unit tests will verify]
 
 ---
 
