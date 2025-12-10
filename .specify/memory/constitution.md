@@ -1,22 +1,24 @@
 <!--
 Sync Impact Report:
-Version: 0.0.0 → 1.0.0
-Change Type: MAJOR (initial constitution creation)
-Modified Principles: N/A (new)
-Added Sections: All sections (initial creation)
+Version: 1.0.0 → 1.2.0
+Change Type: MINOR (new principle added + development practices guidance)
+Modified Principles: N/A
+Added Sections: 
+  - Principle 5: Progressive Iteration
+  - Development Practices (version control and checkpoints)
 Removed Sections: N/A
 Templates Requiring Updates:
-  - ✅ updated: .specify/templates/plan-template.md (added Constitution Check with all 4 principles)
-  - ✅ updated: .specify/templates/spec-template.md (added User Goal & Rationale section, enhanced testing sections)
-  - ✅ updated: .specify/templates/tasks-template.md (updated to emphasize dual testing strategy, expressiveness/correctness)
+  - ⚠ pending: .specify/templates/plan-template.md (needs Constitution Check update for Principle 5)
+  - ⚠ pending: .specify/templates/spec-template.md (may need updates if progressive iteration affects spec structure)
+  - ⚠ pending: .specify/templates/tasks-template.md (may need updates to reflect progressive iteration in task planning)
   - ⚠ pending: .specify/templates/commands/*.md (needs review for any outdated references)
-Follow-up TODOs: None
+Follow-up TODOs: Update templates to include Principle 5 in constitution checks
 -->
 
 # Project Constitution
 
 **Project:** pattern-agent  
-**Version:** 1.0.0  
+**Version:** 1.2.0  
 **Ratification Date:** 2025-01-27  
 **Last Amended:** 2025-01-27
 
@@ -71,6 +73,19 @@ This constitution establishes the non-negotiable principles and governance rules
 - Documentation MUST accurately reflect behavior
 - Edge cases MUST be handled explicitly
 
+### Principle 5: Progressive Iteration
+
+**Rule:** Implementation MUST start with the simplest solution that satisfies the user goal, then incrementally add capability only when user goals require it. Avoid premature abstraction or complexity until there is concrete evidence of need.
+
+**Rationale:** Starting simple reduces risk, accelerates delivery, and prevents over-engineering. Complexity should emerge from real requirements, not speculation. This aligns with the incremental, example-driven development approach and prevents building features that aren't actually needed.
+
+**Enforcement:**
+- Initial implementations MUST use the simplest approach that meets the stated user goal
+- Additional complexity (abstractions, composition, advanced features) MUST be justified by specific user goals
+- When considering adding complexity, ask: "What user goal requires this?"
+- If no user goal requires it, defer the complexity
+- Document the rationale when choosing simple over complex approaches
+
 ## Governance
 
 ### Amendment Procedure
@@ -87,13 +102,30 @@ This constitution establishes the non-negotiable principles and governance rules
 - **MINOR:** New principle/section added or materially expanded guidance
 - **PATCH:** Clarifications, wording, typo fixes, non-semantic refinements
 
+### Development Practices
+
+**Version Control and Checkpoints:**
+- Significant changes MUST be committed to git to provide rollback checkpoints
+- Commit when:
+  - A phase or user story is complete and independently testable
+  - A working state is achieved (even if incomplete)
+  - A refactoring or significant structural change is made
+  - Tests pass after a meaningful increment
+- Commit messages SHOULD reference the task ID and user story when applicable
+- Avoid committing broken or non-functional states unless explicitly marking as WIP
+- Use feature branches for work-in-progress, merge to main when feature is complete
+
+**Rationale:** Good rollback checkpoints enable safe experimentation, support progressive iteration (Principle 5), and allow recovery from mistakes. They also provide a clear history of how the codebase evolved.
+
 ### Compliance Review
 
 - All feature work MUST reference relevant principles
 - Code reviews MUST verify principle compliance
-- Design reviews MUST validate against Principle 1 and Principle 2
+- Design reviews MUST validate against Principle 1, Principle 2, and Principle 5 (progressive iteration)
 - Test reviews MUST verify Principle 3 compliance
 - Code quality reviews MUST verify Principle 4 compliance
+- Implementation reviews MUST verify Principle 5 compliance (simplicity before complexity)
+- Version control practices MUST follow Development Practices guidelines
 
 ## Notes
 

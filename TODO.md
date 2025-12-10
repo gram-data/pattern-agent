@@ -2,12 +2,32 @@
 
 ## 1. Foundation & Setup
 
-- [ ] Set up basic project structure and dependencies
-- [ ] Integrate with gram-hs Pattern abstraction
-- [ ] Define core `Pattern<Agent>` type and basic operations (Principle 4: expressiveness and correctness)
-- [ ] Document basic Pattern<Agent> representation (V, Elements, DAG structure)
+- [x] Set up basic project structure and dependencies
+- [x] Integrate with gram-hs Pattern abstraction
+- [x] Define core `Pattern<Agent>` type 
+  - [x] Type definition complete (PatternAgent type alias in Types.hs)
 
-## 2. Execution
+## 2. Basic LLM Agent
+
+- [ ] **Principle 2: Why Before How** - Document user goal and rationale for basic LLM agent implementation
+- [ ] **Principle 1: Design-Driven Development** - Validate LLM agent design against user goal
+- [ ] Design basic LLM agent structure similar to Google ADK's LlmAgent (Principle 4: expressive API design)
+  - [ ] Agent identity: name, description, model selection
+  - [ ] Instructions/instruction parameter for guiding agent behavior
+  - [ ] Tools integration (equipping agent with capabilities)
+  - [ ] Basic configuration and control
+- [ ] Implement agent identity components (name, description, model) (Principle 4: correctness)
+- [ ] Implement instruction parameter (simple string for now) for guiding agent behavior (Principle 4: expressive, clear API)
+- [ ] Implement tools integration (equipping agent with function tools) (Principle 4: correctness)
+- [ ] Create basic agent execution interface (Principle 4: expressive API)
+- [ ] **Principle 3: Dual Testing Strategy**
+  - [ ] Unit tests for agent identity, instructions, and tools
+  - [ ] Scenario test: create and execute a basic LLM agent (similar to Google ADK example)
+- [ ] Implement basic conversation loop for agent interaction
+- [ ] Support for agent response generation and tool execution
+- [ ] Document basic LLM agent usage and API
+
+## 3. Execution
 
 - [ ] **Principle 2: Why Before How** - Document user goal and rationale for execution environment
 - [ ] **Principle 1: Design-Driven Development** - Validate execution environment design against user goal
@@ -30,7 +50,7 @@
 - [ ] Support for execution visualization
 - [ ] Document execution semantics and DAG interpretation
 
-## 3. Decomposition (Factorization)
+## 4. Decomposition (Factorization)
 
 - [ ] **Principle 2: Why Before How** - Document user goals and rationale for decomposition feature
 - [ ] **Principle 1: Design-Driven Development** - Validate decomposition API design against user goals
@@ -54,7 +74,7 @@
 - [ ] **Principle 3: Dual Testing Strategy** - Unit and scenario tests for each decomposition strategy
 - [ ] Decomposition toolkit with factorization strategies
 
-## 4. Composition
+## 5. Composition
 
 - [ ] **Principle 2: Why Before How** - Document user goals and rationale for composition feature
 - [ ] **Principle 1: Design-Driven Development** - Validate composition API design against user goals
@@ -76,7 +96,7 @@
 - [ ] Support for synchronization points in workflows
 - [ ] **Principle 3: Dual Testing Strategy** - Unit and scenario tests for composition features
 
-## 5. Pattern Library
+## 6. Pattern Library
 
 - [ ] **Principle 2: Why Before How** - Document rationale for pattern library and catalog structure
 - [ ] Create initial catalog of reusable agent patterns (Principle 4: expressive naming and organization)
@@ -86,7 +106,7 @@
 - [ ] Create pattern comparison utilities (Principle 4: expressive API, correct behavior)
 - [ ] **Principle 3: Dual Testing Strategy** - Unit tests for library utilities, scenario tests for pattern usage
 
-## 6. Equivalence & Comparison
+## 7. Equivalence & Comparison
 
 - [ ] **Principle 2: Why Before How** - Document user goals and rationale for equivalence feature
 - [ ] **Principle 1: Design-Driven Development** - Validate equivalence design against user goals
@@ -97,7 +117,7 @@
 - [ ] Document equivalence strategies (Principle 4: accurate documentation)
 - [ ] **Principle 3: Dual Testing Strategy** - Unit tests for equivalence operations, scenario tests demonstrating equivalence validation
 
-## 7. Tracing
+## 8. Tracing
 
 - [ ] **Principle 2: Why Before How** - Document user goals and rationale for tracing feature
 - [ ] **Principle 1: Design-Driven Development** - Validate tracing design against user goals
@@ -107,7 +127,7 @@
 - [ ] Support for trace analysis and inspection (Principle 4: expressive API)
 - [ ] **Principle 3: Dual Testing Strategy** - Unit tests for tracing operations, scenario tests for trace capture and analysis
 
-## 8. Evolution & Feedback
+## 9. Evolution & Feedback
 
 - [ ] **Principle 2: Why Before How** - Document user goals and rationale for evolution mechanisms
 - [ ] **Principle 1: Design-Driven Development** - Validate evolution design against user goals
@@ -118,7 +138,7 @@
 - [ ] Automated pattern optimization (Principle 4: correctness - valid optimizations)
 - [ ] **Principle 3: Dual Testing Strategy** - Unit tests for evolution mechanisms, scenario tests for pattern improvement workflows
 
-## 9. Theoretical Foundations
+## 10. Theoretical Foundations
 
 - [ ] Explore category theory connections
   - [ ] Investigate if patterns form a category
@@ -127,7 +147,7 @@
 - [ ] Formalize bidirectional transformation properties
 - [ ] Document mathematical foundations
 
-## 10. Documentation & Examples
+## 11. Documentation & Examples
 
 - [ ] Create comprehensive examples for decomposition (Principle 4: expressive, clear examples)
 - [ ] Create comprehensive examples for composition (Principle 4: expressive, clear examples)
