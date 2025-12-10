@@ -22,9 +22,9 @@
 
 **Purpose**: Project initialization and dependency setup
 
-- [ ] T001 Update pattern-agent.cabal with new dependencies: http-client, http-client-tls, aeson, bytestring, text, mtl
-- [ ] T002 Create test directory structure: tests/unit/ and tests/scenario/
-- [ ] T003 [P] Create module structure: src/PatternAgent/Agent.hs, src/PatternAgent/Tool.hs, src/PatternAgent/Execution.hs, src/PatternAgent/Context.hs
+- [x] T001 Update pattern-agent.cabal with new dependencies: http-client, http-client-tls, aeson, bytestring, text, mtl
+- [x] T002 Create test directory structure: tests/unit/ and tests/scenario/
+- [x] T003 [P] Create module structure: src/PatternAgent/Agent.hs, src/PatternAgent/Tool.hs, src/PatternAgent/Execution.hs, src/PatternAgent/Context.hs
 
 ---
 
@@ -34,14 +34,14 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 [P] Define AgentError type in src/PatternAgent/Execution.hs with constructors: LLMAPIError, ToolError, ValidationError, ConfigurationError
-- [ ] T005 [P] Define LLMProvider typeclass in src/PatternAgent/Execution.hs with callLLM method signature
-- [ ] T006 [P] Define API key configuration type/interface in src/PatternAgent/Execution.hs for provider authentication
-- [ ] T007 [P] Implement API key loading from environment variables in src/PatternAgent/Execution.hs (e.g., OPENAI_API_KEY)
-- [ ] T008 [P] Implement OpenAIProvider instance in src/PatternAgent/Execution.hs for OpenAI API integration
-- [ ] T009 Create HTTP client helper functions in src/PatternAgent/Execution.hs for LLM API requests with authentication headers
-- [ ] T010 Create JSON serialization helpers in src/PatternAgent/Execution.hs for LLM request/response handling
-- [ ] T011 Add error handling for missing/invalid API keys in src/PatternAgent/Execution.hs (ConfigurationError)
+- [x] T004 [P] Define AgentError type in src/PatternAgent/Execution.hs with constructors: LLMAPIError, ToolError, ValidationError, ConfigurationError
+- [x] T005 [P] Define LLMProvider typeclass in src/PatternAgent/Execution.hs with callLLM method signature
+- [x] T006 [P] Define API key configuration type/interface in src/PatternAgent/Execution.hs for provider authentication
+- [x] T007 [P] Implement API key loading from environment variables in src/PatternAgent/Execution.hs (e.g., OPENAI_API_KEY)
+- [x] T008 [P] Implement OpenAIProvider instance in src/PatternAgent/Execution.hs for OpenAI API integration
+- [x] T009 Create HTTP client helper functions in src/PatternAgent/Execution.hs for LLM API requests with authentication headers
+- [x] T010 Create JSON serialization helpers in src/PatternAgent/Execution.hs for LLM request/response handling
+- [x] T011 Add error handling for missing/invalid API keys in src/PatternAgent/Execution.hs (ConfigurationError)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -68,16 +68,16 @@
 
 ### Implementation for User Story 1 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T017 [P] [US1] Define LLMProvider enum (OpenAI, Anthropic, Google) in src/PatternAgent/Agent.hs
-- [ ] T018 [P] [US1] Define Model type with modelId and provider fields in src/PatternAgent/Agent.hs
-- [ ] T019 [P] [US1] Define Agent type with name, description, model fields in src/PatternAgent/Agent.hs
-- [ ] T020 [US1] Implement createModel function in src/PatternAgent/Agent.hs with validation
-- [ ] T021 [US1] Implement createAgent function in src/PatternAgent/Agent.hs with name, description, model parameters
-- [ ] T022 [US1] Implement agentName accessor in src/PatternAgent/Agent.hs
-- [ ] T023 [US1] Implement agentDescription accessor in src/PatternAgent/Agent.hs
-- [ ] T024 [US1] Implement agentModel accessor in src/PatternAgent/Agent.hs
-- [ ] T025 [US1] Add validation for empty name in createAgent in src/PatternAgent/Agent.hs
-- [ ] T026 [US1] Export Agent, Model, LLMProvider types and functions from PatternAgent.Agent module
+- [x] T017 [P] [US1] Define LLMProvider enum (OpenAI, Anthropic, Google) in src/PatternAgent/Agent.hs
+- [x] T018 [P] [US1] Define Model type with modelId and provider fields in src/PatternAgent/Agent.hs
+- [x] T019 [P] [US1] Define Agent type with name, description, model fields in src/PatternAgent/Agent.hs
+- [x] T020 [US1] Implement createModel function in src/PatternAgent/Agent.hs with validation
+- [x] T021 [US1] Implement createAgent function in src/PatternAgent/Agent.hs with name, description, model parameters
+- [x] T022 [US1] Implement agentName accessor in src/PatternAgent/Agent.hs
+- [x] T023 [US1] Implement agentDescription accessor in src/PatternAgent/Agent.hs
+- [x] T024 [US1] Implement agentModel accessor in src/PatternAgent/Agent.hs
+- [x] T025 [US1] Add validation for empty name in createAgent in src/PatternAgent/Agent.hs
+- [x] T026 [US1] Export Agent, Model, LLMProvider types and functions from PatternAgent.Agent module
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently. Developers can create agents with identity.
 
@@ -217,7 +217,7 @@
 
 ### Implementation for User Story 5 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T090 [US5] Implement addMessage function in src/PatternAgent/Context.hs
+- [x] T090 [US5] Implement addMessage function in src/PatternAgent/Context.hs
 - [ ] T091 [US5] Integrate conversation context into executeAgent in src/PatternAgent/Execution.hs
 - [ ] T092 [US5] Update LLM API request to include conversation history in src/PatternAgent/Execution.hs
 - [ ] T093 [US5] Ensure context is passed through execution flow in src/PatternAgent/Execution.hs

@@ -1,4 +1,15 @@
 module Main (main) where
 
+import Test.Tasty
+import qualified AgentTest
+import qualified AgentIdentityTest
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented."
+main = defaultMain $ testGroup "Pattern Agent Tests"
+  [ testGroup "Unit Tests"
+      [ AgentTest.tests
+      ]
+  , testGroup "Scenario Tests"
+      [ AgentIdentityTest.tests
+      ]
+  ]

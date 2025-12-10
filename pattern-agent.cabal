@@ -61,7 +61,11 @@ library
     -- Modules exported by the library.
     exposed-modules:
         PatternAgent.Core,
-        PatternAgent.Types
+        PatternAgent.Types,
+        PatternAgent.LLM,
+        PatternAgent.Agent,
+        PatternAgent.Execution,
+        PatternAgent.Context
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -73,7 +77,14 @@ library
     build-depends:
         base ^>=4.20.2.0,
         pattern,
-        hashable ^>=1.4
+        hashable ^>=1.4,
+        http-client ^>=0.7,
+        http-client-tls ^>=0.3,
+        http-types ^>=0.12,
+        aeson >=2.1,
+        bytestring ^>=0.11,
+        text >=2.0,
+        mtl ^>=2.3
 
     -- Directories containing source files.
     hs-source-dirs:   src
@@ -134,4 +145,5 @@ test-suite pattern-agent-test
         pattern,
         tasty ^>=1.4,
         tasty-hunit ^>=0.10,
-        tasty-quickcheck ^>=0.10
+        tasty-quickcheck ^>=0.10,
+        text >=2.0
