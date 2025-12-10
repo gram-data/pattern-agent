@@ -59,7 +59,9 @@ library
     import:           warnings
 
     -- Modules exported by the library.
-    exposed-modules:  MyLib
+    exposed-modules:
+        PatternAgent.Core,
+        PatternAgent.Types
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -68,7 +70,10 @@ library
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.20.2.0
+    build-depends:
+        base ^>=4.20.2.0,
+        pattern,
+        hashable ^>=1.4
 
     -- Directories containing source files.
     hs-source-dirs:   src
@@ -125,4 +130,8 @@ test-suite pattern-agent-test
     -- Test dependencies.
     build-depends:
         base ^>=4.20.2.0,
-        pattern-agent
+        pattern-agent,
+        pattern,
+        tasty ^>=1.4,
+        tasty-hunit ^>=0.10,
+        tasty-quickcheck ^>=0.10

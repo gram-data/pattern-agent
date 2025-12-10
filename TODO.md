@@ -138,20 +138,10 @@
 - [ ] Document design validation process and examples (Principle 1: Design-Driven Development)
 - [ ] Document testing strategy with unit and scenario test examples (Principle 3: Dual Testing Strategy)
 
-## 11. Testing & Validation
+---
 
-**Note:** Per Principle 3 (Dual Testing Strategy), all features must include both unit tests and scenario tests. This section tracks cross-cutting testing infrastructure.
+# Unplanned features to consider
 
-- [ ] **Principle 3: Dual Testing Strategy** - Establish testing infrastructure and patterns
-- [ ] Unit tests for core Pattern<Agent> operations
-- [ ] Scenario tests for core Pattern<Agent> operations (user goal satisfaction)
-- [ ] Unit tests for execution environment components
-- [ ] Scenario tests for execution environment (end-to-end user goals)
-- [ ] Unit tests for decomposition workflows
-- [ ] Scenario tests for decomposition workflows (user goal satisfaction)
-- [ ] Unit tests for composition workflows
-- [ ] Scenario tests for composition workflows (user goal satisfaction)
-- [ ] Unit tests for pattern equivalence operations
-- [ ] Scenario tests for pattern equivalence validation
-- [ ] Performance benchmarks for different architectures
-- [ ] Test coverage validation (ensure all features have both unit and scenario tests)
+Todo sometime:
+
+- serialization using gram notation
