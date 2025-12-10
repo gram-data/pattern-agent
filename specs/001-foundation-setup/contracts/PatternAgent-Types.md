@@ -11,9 +11,6 @@
 ```haskell
 -- Main type alias
 type PatternAgent = Pattern Agent
-
--- Re-export for convenience
-type AgentPattern = PatternAgent
 ```
 
 ### Supporting Types
@@ -33,7 +30,7 @@ data Agent = Agent
 
 - Agent type is a placeholder to enable type checking
 - Actual Agent structure will be defined in execution feature
-- Type aliases provide multiple naming options for clarity
+- PatternAgent is the single, canonical type alias for Pattern Agent
 - Agent derives standard typeclasses for use in Pattern operations
 
 ## Dependencies

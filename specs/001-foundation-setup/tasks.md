@@ -22,10 +22,10 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create project directory structure (src/PatternAgent/, test/unit/, test/scenario/, docs/)
-- [ ] T002 Update pattern-agent.cabal with pattern dependency (local path to ../gram-hs/libs/pattern)
-- [ ] T003 [P] Add testing dependencies to pattern-agent.cabal (tasty, tasty-hunit, tasty-quickcheck)
-- [ ] T004 [P] Configure test suite in pattern-agent.cabal for unit and scenario tests
+- [x] T001 Create project directory structure (src/PatternAgent/, test/unit/, test/scenario/, docs/)
+- [x] T002 Update pattern-agent.cabal with pattern dependency (local path to ../gram-hs/libs/pattern)
+- [x] T003 [P] Add testing dependencies to pattern-agent.cabal (tasty, tasty-hunit, tasty-quickcheck)
+- [x] T004 [P] Configure test suite in pattern-agent.cabal for unit and scenario tests
 
 ---
 
@@ -35,8 +35,8 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Create minimal Agent type placeholder in src/PatternAgent/Types.hs to enable type checking
-- [ ] T006 Verify pattern package builds and is accessible from pattern-agent project
+- [x] T005 Create minimal Agent type placeholder in src/PatternAgent/Types.hs to enable type checking
+- [x] T006 Verify pattern package builds and is accessible from pattern-agent project
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
