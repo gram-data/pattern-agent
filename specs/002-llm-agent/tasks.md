@@ -36,9 +36,12 @@
 
 - [ ] T004 [P] Define AgentError type in src/PatternAgent/Execution.hs with constructors: LLMAPIError, ToolError, ValidationError, ConfigurationError
 - [ ] T005 [P] Define LLMProvider typeclass in src/PatternAgent/Execution.hs with callLLM method signature
-- [ ] T006 [P] Implement OpenAIProvider instance in src/PatternAgent/Execution.hs for OpenAI API integration
-- [ ] T007 Create HTTP client helper functions in src/PatternAgent/Execution.hs for LLM API requests
-- [ ] T008 Create JSON serialization helpers in src/PatternAgent/Execution.hs for LLM request/response handling
+- [ ] T006 [P] Define API key configuration type/interface in src/PatternAgent/Execution.hs for provider authentication
+- [ ] T007 [P] Implement API key loading from environment variables in src/PatternAgent/Execution.hs (e.g., OPENAI_API_KEY)
+- [ ] T008 [P] Implement OpenAIProvider instance in src/PatternAgent/Execution.hs for OpenAI API integration
+- [ ] T009 Create HTTP client helper functions in src/PatternAgent/Execution.hs for LLM API requests with authentication headers
+- [ ] T010 Create JSON serialization helpers in src/PatternAgent/Execution.hs for LLM request/response handling
+- [ ] T011 Add error handling for missing/invalid API keys in src/PatternAgent/Execution.hs (ConfigurationError)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -55,26 +58,26 @@
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
 **Scenario Tests** (simulate user goal satisfaction):
-- [ ] T009 [P] [US1] Scenario test: Create agent with name, description, and model in tests/scenario/AgentIdentityTest.hs
-- [ ] T010 [P] [US1] Scenario test: Verify agent can be uniquely identified by name in tests/scenario/AgentIdentityTest.hs
+- [ ] T012 [P] [US1] Scenario test: Create agent with name, description, and model in tests/scenario/AgentIdentityTest.hs
+- [ ] T013 [P] [US1] Scenario test: Verify agent can be uniquely identified by name in tests/scenario/AgentIdentityTest.hs
 
 **Unit Tests** (component correctness):
-- [ ] T011 [P] [US1] Unit test: Agent creation with name, description, model in tests/unit/AgentTest.hs
-- [ ] T012 [P] [US1] Unit test: Name uniqueness validation in tests/unit/AgentTest.hs
-- [ ] T013 [P] [US1] Unit test: Model configuration accessors in tests/unit/AgentTest.hs
+- [ ] T014 [P] [US1] Unit test: Agent creation with name, description, model in tests/unit/AgentTest.hs
+- [ ] T015 [P] [US1] Unit test: Name uniqueness validation in tests/unit/AgentTest.hs
+- [ ] T016 [P] [US1] Unit test: Model configuration accessors in tests/unit/AgentTest.hs
 
 ### Implementation for User Story 1 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T014 [P] [US1] Define LLMProvider enum (OpenAI, Anthropic, Google) in src/PatternAgent/Agent.hs
-- [ ] T015 [P] [US1] Define Model type with modelId and provider fields in src/PatternAgent/Agent.hs
-- [ ] T016 [P] [US1] Define Agent type with name, description, model fields in src/PatternAgent/Agent.hs
-- [ ] T017 [US1] Implement createModel function in src/PatternAgent/Agent.hs with validation
-- [ ] T018 [US1] Implement createAgent function in src/PatternAgent/Agent.hs with name, description, model parameters
-- [ ] T019 [US1] Implement agentName accessor in src/PatternAgent/Agent.hs
-- [ ] T020 [US1] Implement agentDescription accessor in src/PatternAgent/Agent.hs
-- [ ] T021 [US1] Implement agentModel accessor in src/PatternAgent/Agent.hs
-- [ ] T022 [US1] Add validation for empty name in createAgent in src/PatternAgent/Agent.hs
-- [ ] T023 [US1] Export Agent, Model, LLMProvider types and functions from PatternAgent.Agent module
+- [ ] T017 [P] [US1] Define LLMProvider enum (OpenAI, Anthropic, Google) in src/PatternAgent/Agent.hs
+- [ ] T018 [P] [US1] Define Model type with modelId and provider fields in src/PatternAgent/Agent.hs
+- [ ] T019 [P] [US1] Define Agent type with name, description, model fields in src/PatternAgent/Agent.hs
+- [ ] T020 [US1] Implement createModel function in src/PatternAgent/Agent.hs with validation
+- [ ] T021 [US1] Implement createAgent function in src/PatternAgent/Agent.hs with name, description, model parameters
+- [ ] T022 [US1] Implement agentName accessor in src/PatternAgent/Agent.hs
+- [ ] T023 [US1] Implement agentDescription accessor in src/PatternAgent/Agent.hs
+- [ ] T024 [US1] Implement agentModel accessor in src/PatternAgent/Agent.hs
+- [ ] T025 [US1] Add validation for empty name in createAgent in src/PatternAgent/Agent.hs
+- [ ] T026 [US1] Export Agent, Model, LLMProvider types and functions from PatternAgent.Agent module
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently. Developers can create agents with identity.
 
@@ -89,21 +92,21 @@
 ### Tests for User Story 2 (Principle 3: Dual Testing Strategy) ⚠️
 
 **Scenario Tests**:
-- [ ] T024 [P] [US2] Scenario test: Create agent with instructions and verify instructions are stored in tests/scenario/AgentInstructionsTest.hs
-- [ ] T025 [P] [US2] Scenario test: Verify instructions influence agent behavior in tests/scenario/AgentInstructionsTest.hs
+- [ ] T027 [P] [US2] Scenario test: Create agent with instructions and verify instructions are stored in tests/scenario/AgentInstructionsTest.hs
+- [ ] T028 [P] [US2] Scenario test: Verify instructions influence agent behavior in tests/scenario/AgentInstructionsTest.hs
 
 **Unit Tests**:
-- [ ] T026 [P] [US2] Unit test: Instruction storage and retrieval in tests/unit/AgentTest.hs
-- [ ] T027 [P] [US2] Unit test: Instruction validation (non-empty) in tests/unit/AgentTest.hs
-- [ ] T028 [P] [US2] Unit test: agentInstruction accessor in tests/unit/AgentTest.hs
+- [ ] T029 [P] [US2] Unit test: Instruction storage and retrieval in tests/unit/AgentTest.hs
+- [ ] T030 [P] [US2] Unit test: Instruction validation (non-empty) in tests/unit/AgentTest.hs
+- [ ] T031 [P] [US2] Unit test: agentInstruction accessor in tests/unit/AgentTest.hs
 
 ### Implementation for User Story 2 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T029 [US2] Add instruction field to Agent type in src/PatternAgent/Agent.hs
-- [ ] T030 [US2] Update createAgent function to accept instruction parameter in src/PatternAgent/Agent.hs
-- [ ] T031 [US2] Implement agentInstruction accessor in src/PatternAgent/Agent.hs
-- [ ] T032 [US2] Add validation for empty instruction in createAgent in src/PatternAgent/Agent.hs
-- [ ] T033 [US2] Update Agent type instances (Eq, Show) to include instruction field
+- [ ] T032 [US2] Add instruction field to Agent type in src/PatternAgent/Agent.hs
+- [ ] T033 [US2] Update createAgent function to accept instruction parameter in src/PatternAgent/Agent.hs
+- [ ] T034 [US2] Implement agentInstruction accessor in src/PatternAgent/Agent.hs
+- [ ] T035 [US2] Add validation for empty instruction in createAgent in src/PatternAgent/Agent.hs
+- [ ] T036 [US2] Update Agent type instances (Eq, Show) to include instruction field
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently. Developers can create agents with identity and instructions.
 
@@ -118,32 +121,33 @@
 ### Tests for User Story 4 (Principle 3: Dual Testing Strategy) ⚠️
 
 **Scenario Tests**:
-- [ ] T034 [P] [US4] Scenario test: Execute agent with user input and receive response in tests/scenario/ConversationalAgentTest.hs
-- [ ] T035 [P] [US4] Scenario test: Verify agent response reflects instructions in tests/scenario/ConversationalAgentTest.hs
+- [ ] T037 [P] [US4] Scenario test: Execute agent with user input and receive response in tests/scenario/ConversationalAgentTest.hs
+- [ ] T038 [P] [US4] Scenario test: Verify agent response reflects instructions in tests/scenario/ConversationalAgentTest.hs
 
 **Unit Tests**:
-- [ ] T036 [P] [US4] Unit test: Agent execution with valid input in tests/unit/ExecutionTest.hs
-- [ ] T037 [P] [US4] Unit test: Response generation and format in tests/unit/ExecutionTest.hs
-- [ ] T038 [P] [US4] Unit test: Error handling for empty user input in tests/unit/ExecutionTest.hs
-- [ ] T039 [P] [US4] Unit test: Error handling for LLM API failures in tests/unit/ExecutionTest.hs
+- [ ] T039 [P] [US4] Unit test: Agent execution with valid input in tests/unit/ExecutionTest.hs
+- [ ] T040 [P] [US4] Unit test: Response generation and format in tests/unit/ExecutionTest.hs
+- [ ] T041 [P] [US4] Unit test: Error handling for empty user input in tests/unit/ExecutionTest.hs
+- [ ] T042 [P] [US4] Unit test: Error handling for LLM API failures in tests/unit/ExecutionTest.hs
+- [ ] T043 [P] [US4] Unit test: Error handling for missing API key in tests/unit/ExecutionTest.hs
 
 ### Implementation for User Story 4 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T040 [P] [US4] Define MessageRole type (UserRole, AssistantRole) in src/PatternAgent/Context.hs
-- [ ] T041 [P] [US4] Define Message type with role and content in src/PatternAgent/Context.hs
-- [ ] T042 [P] [US4] Define ConversationContext type alias ([Message]) in src/PatternAgent/Context.hs
-- [ ] T043 [P] [US4] Define AgentResponse type with responseContent and responseToolsUsed in src/PatternAgent/Execution.hs
-- [ ] T044 [US4] Implement createMessage function in src/PatternAgent/Context.hs with validation
-- [ ] T045 [US4] Implement emptyContext function in src/PatternAgent/Context.hs
-- [ ] T046 [US4] Implement responseContent accessor in src/PatternAgent/Execution.hs
-- [ ] T047 [US4] Implement responseToolsUsed accessor in src/PatternAgent/Execution.hs
-- [ ] T048 [US4] Implement LLM API request building in src/PatternAgent/Execution.hs (OpenAI format)
-- [ ] T049 [US4] Implement LLM API response parsing in src/PatternAgent/Execution.hs
-- [ ] T050 [US4] Implement executeAgent function in src/PatternAgent/Execution.hs with user input and context
-- [ ] T051 [US4] Add error handling for LLM API errors in executeAgent in src/PatternAgent/Execution.hs
-- [ ] T052 [US4] Add validation for empty user input in executeAgent in src/PatternAgent/Execution.hs
-- [ ] T053 [US4] Export execution functions from PatternAgent.Execution module
-- [ ] T054 [US4] Export context functions from PatternAgent.Context module
+- [ ] T044 [P] [US4] Define MessageRole type (UserRole, AssistantRole) in src/PatternAgent/Context.hs
+- [ ] T045 [P] [US4] Define Message type with role and content in src/PatternAgent/Context.hs
+- [ ] T046 [P] [US4] Define ConversationContext type alias ([Message]) in src/PatternAgent/Context.hs
+- [ ] T047 [P] [US4] Define AgentResponse type with responseContent and responseToolsUsed in src/PatternAgent/Execution.hs
+- [ ] T048 [US4] Implement createMessage function in src/PatternAgent/Context.hs with validation
+- [ ] T049 [US4] Implement emptyContext function in src/PatternAgent/Context.hs
+- [ ] T050 [US4] Implement responseContent accessor in src/PatternAgent/Execution.hs
+- [ ] T051 [US4] Implement responseToolsUsed accessor in src/PatternAgent/Execution.hs
+- [ ] T052 [US4] Implement LLM API request building in src/PatternAgent/Execution.hs (OpenAI format) with API key authentication
+- [ ] T053 [US4] Implement LLM API response parsing in src/PatternAgent/Execution.hs
+- [ ] T054 [US4] Implement executeAgent function in src/PatternAgent/Execution.hs with user input and context
+- [ ] T055 [US4] Add error handling for LLM API errors in executeAgent in src/PatternAgent/Execution.hs
+- [ ] T056 [US4] Add validation for empty user input in executeAgent in src/PatternAgent/Execution.hs
+- [ ] T057 [US4] Export execution functions from PatternAgent.Execution module
+- [ ] T058 [US4] Export context functions from PatternAgent.Context module
 
 **Checkpoint**: At this point, User Stories 1, 2, AND 4 should work independently. Developers can create agents and execute them to get responses.
 
@@ -158,37 +162,37 @@
 ### Tests for User Story 3 (Principle 3: Dual Testing Strategy) ⚠️
 
 **Scenario Tests**:
-- [ ] T055 [P] [US3] Scenario test: Create agent with tool and verify tool usage in tests/scenario/ToolAgentTest.hs
-- [ ] T056 [P] [US3] Scenario test: Agent selects and invokes appropriate tool in tests/scenario/ToolAgentTest.hs
-- [ ] T057 [P] [US3] Scenario test: Agent uses multiple tools in single interaction in tests/scenario/ToolAgentTest.hs
+- [ ] T059 [P] [US3] Scenario test: Create agent with tool and verify tool usage in tests/scenario/ToolAgentTest.hs
+- [ ] T060 [P] [US3] Scenario test: Agent selects and invokes appropriate tool in tests/scenario/ToolAgentTest.hs
+- [ ] T061 [P] [US3] Scenario test: Agent uses multiple tools in single interaction in tests/scenario/ToolAgentTest.hs
 
 **Unit Tests**:
-- [ ] T058 [P] [US3] Unit test: Tool creation and registration in tests/unit/ToolTest.hs
-- [ ] T059 [P] [US3] Unit test: Tool discovery and access in tests/unit/ToolTest.hs
-- [ ] T060 [P] [US3] Unit test: Tool invocation with parameters in tests/unit/ToolTest.hs
-- [ ] T061 [P] [US3] Unit test: Tool result handling in tests/unit/ToolTest.hs
-- [ ] T062 [P] [US3] Unit test: Tool schema validation in tests/unit/ToolTest.hs
-- [ ] T063 [P] [US3] Unit test: Duplicate tool name validation in tests/unit/ToolTest.hs
+- [ ] T062 [P] [US3] Unit test: Tool creation and registration in tests/unit/ToolTest.hs
+- [ ] T063 [P] [US3] Unit test: Tool discovery and access in tests/unit/ToolTest.hs
+- [ ] T064 [P] [US3] Unit test: Tool invocation with parameters in tests/unit/ToolTest.hs
+- [ ] T065 [P] [US3] Unit test: Tool result handling in tests/unit/ToolTest.hs
+- [ ] T066 [P] [US3] Unit test: Tool schema validation in tests/unit/ToolTest.hs
+- [ ] T067 [P] [US3] Unit test: Duplicate tool name validation in tests/unit/ToolTest.hs
 
 ### Implementation for User Story 3 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T064 [P] [US3] Define Tool type with name, description, schema, invoke function in src/PatternAgent/Tool.hs
-- [ ] T065 [US3] Implement createTool function in src/PatternAgent/Tool.hs
-- [ ] T066 [US3] Implement createFunctionTool function in src/PatternAgent/Tool.hs (with manual schema)
-- [ ] T067 [US3] Implement toolName accessor in src/PatternAgent/Tool.hs
-- [ ] T068 [US3] Implement toolDescription accessor in src/PatternAgent/Tool.hs
-- [ ] T069 [US3] Implement toolSchema accessor in src/PatternAgent/Tool.hs
-- [ ] T070 [US3] Add tools field to Agent type in src/PatternAgent/Agent.hs
-- [ ] T071 [US3] Update createAgent to accept tools parameter in src/PatternAgent/Agent.hs
-- [ ] T072 [US3] Implement agentTools accessor in src/PatternAgent/Agent.hs
-- [ ] T073 [US3] Add duplicate tool name validation in createAgent in src/PatternAgent/Agent.hs
-- [ ] T074 [US3] Define ToolInvocation type in src/PatternAgent/Execution.hs
-- [ ] T075 [US3] Implement tool invocation logic in executeAgent in src/PatternAgent/Execution.hs
-- [ ] T076 [US3] Implement tool parameter schema validation in src/PatternAgent/Execution.hs
-- [ ] T077 [US3] Implement tool result handling and error catching in src/PatternAgent/Execution.hs
-- [ ] T078 [US3] Integrate tool results into LLM conversation flow in src/PatternAgent/Execution.hs
-- [ ] T079 [US3] Add tool invocation tracking to AgentResponse in src/PatternAgent/Execution.hs
-- [ ] T080 [US3] Export Tool types and functions from PatternAgent.Tool module
+- [ ] T068 [P] [US3] Define Tool type with name, description, schema, invoke function in src/PatternAgent/Tool.hs
+- [ ] T069 [US3] Implement createTool function in src/PatternAgent/Tool.hs
+- [ ] T070 [US3] Implement createFunctionTool function in src/PatternAgent/Tool.hs (with manual schema)
+- [ ] T071 [US3] Implement toolName accessor in src/PatternAgent/Tool.hs
+- [ ] T072 [US3] Implement toolDescription accessor in src/PatternAgent/Tool.hs
+- [ ] T073 [US3] Implement toolSchema accessor in src/PatternAgent/Tool.hs
+- [ ] T074 [US3] Add tools field to Agent type in src/PatternAgent/Agent.hs
+- [ ] T075 [US3] Update createAgent to accept tools parameter in src/PatternAgent/Agent.hs
+- [ ] T076 [US3] Implement agentTools accessor in src/PatternAgent/Agent.hs
+- [ ] T077 [US3] Add duplicate tool name validation in createAgent in src/PatternAgent/Agent.hs
+- [ ] T078 [US3] Define ToolInvocation type in src/PatternAgent/Execution.hs
+- [ ] T079 [US3] Implement tool invocation logic in executeAgent in src/PatternAgent/Execution.hs
+- [ ] T080 [US3] Implement tool parameter schema validation in src/PatternAgent/Execution.hs
+- [ ] T081 [US3] Implement tool result handling and error catching in src/PatternAgent/Execution.hs
+- [ ] T082 [US3] Integrate tool results into LLM conversation flow in src/PatternAgent/Execution.hs
+- [ ] T083 [US3] Add tool invocation tracking to AgentResponse in src/PatternAgent/Execution.hs
+- [ ] T084 [US3] Export Tool types and functions from PatternAgent.Tool module
 
 **Checkpoint**: At this point, User Stories 1, 2, 3, AND 4 should work independently. Developers can create agents with tools and execute them with tool support.
 
@@ -203,21 +207,21 @@
 ### Tests for User Story 5 (Principle 3: Dual Testing Strategy) ⚠️
 
 **Scenario Tests**:
-- [ ] T081 [P] [US5] Scenario test: Multi-turn conversation with context retention in tests/scenario/MultiTurnConversationTest.hs
-- [ ] T082 [P] [US5] Scenario test: Agent references previous conversation in follow-up in tests/scenario/MultiTurnConversationTest.hs
+- [ ] T085 [P] [US5] Scenario test: Multi-turn conversation with context retention in tests/scenario/MultiTurnConversationTest.hs
+- [ ] T086 [P] [US5] Scenario test: Agent references previous conversation in follow-up in tests/scenario/MultiTurnConversationTest.hs
 
 **Unit Tests**:
-- [ ] T083 [P] [US5] Unit test: Context management (addMessage) in tests/unit/ContextTest.hs
-- [ ] T084 [P] [US5] Unit test: Context application in agent execution in tests/unit/ExecutionTest.hs
-- [ ] T085 [P] [US5] Unit test: Context boundaries and scoping in tests/unit/ContextTest.hs
+- [ ] T087 [P] [US5] Unit test: Context management (addMessage) in tests/unit/ContextTest.hs
+- [ ] T088 [P] [US5] Unit test: Context application in agent execution in tests/unit/ExecutionTest.hs
+- [ ] T089 [P] [US5] Unit test: Context boundaries and scoping in tests/unit/ContextTest.hs
 
 ### Implementation for User Story 5 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T086 [US5] Implement addMessage function in src/PatternAgent/Context.hs
-- [ ] T087 [US5] Integrate conversation context into executeAgent in src/PatternAgent/Execution.hs
-- [ ] T088 [US5] Update LLM API request to include conversation history in src/PatternAgent/Execution.hs
-- [ ] T089 [US5] Ensure context is passed through execution flow in src/PatternAgent/Execution.hs
-- [ ] T090 [US5] Update AgentResponse to include context update guidance in src/PatternAgent/Execution.hs
+- [ ] T090 [US5] Implement addMessage function in src/PatternAgent/Context.hs
+- [ ] T091 [US5] Integrate conversation context into executeAgent in src/PatternAgent/Execution.hs
+- [ ] T092 [US5] Update LLM API request to include conversation history in src/PatternAgent/Execution.hs
+- [ ] T093 [US5] Ensure context is passed through execution flow in src/PatternAgent/Execution.hs
+- [ ] T094 [US5] Update AgentResponse to include context update guidance in src/PatternAgent/Execution.hs
 
 **Checkpoint**: At this point, all user stories should work independently. Developers can create agents, configure them, execute them with tools, and maintain conversation context.
 
@@ -227,18 +231,18 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T091 [P] Implement GenerateContentConfig type in src/PatternAgent/Agent.hs
-- [ ] T092 [P] Implement createGenerateContentConfig function in src/PatternAgent/Agent.hs with validation
-- [ ] T093 [P] Add generateContentConfig field to Agent type in src/PatternAgent/Agent.hs
-- [ ] T094 [P] Integrate GenerateContentConfig into LLM API requests in src/PatternAgent/Execution.hs
-- [ ] T095 [P] Add comprehensive error handling for all edge cases in src/PatternAgent/Execution.hs
-- [ ] T096 [P] Update module exports in src/PatternAgent/Agent.hs, Tool.hs, Execution.hs, Context.hs
-- [ ] T097 [P] Add Haddock documentation to all public functions in src/PatternAgent/
-- [ ] T098 [P] Run quickstart.md examples validation
-- [ ] T099 [P] Additional unit tests for edge cases in tests/unit/
-- [ ] T100 [P] Additional scenario tests for complex workflows in tests/scenario/
-- [ ] T101 Code cleanup and refactoring across all modules
-- [ ] T102 Update pattern-agent.cabal exposed-modules list
+- [ ] T095 [P] Implement GenerateContentConfig type in src/PatternAgent/Agent.hs
+- [ ] T096 [P] Implement createGenerateContentConfig function in src/PatternAgent/Agent.hs with validation
+- [ ] T097 [P] Add generateContentConfig field to Agent type in src/PatternAgent/Agent.hs
+- [ ] T098 [P] Integrate GenerateContentConfig into LLM API requests in src/PatternAgent/Execution.hs
+- [ ] T099 [P] Add comprehensive error handling for all edge cases in src/PatternAgent/Execution.hs
+- [ ] T100 [P] Update module exports in src/PatternAgent/Agent.hs, Tool.hs, Execution.hs, Context.hs
+- [ ] T101 [P] Add Haddock documentation to all public functions in src/PatternAgent/
+- [ ] T102 [P] Run quickstart.md examples validation
+- [ ] T103 [P] Additional unit tests for edge cases in tests/unit/
+- [ ] T104 [P] Additional scenario tests for complex workflows in tests/scenario/
+- [ ] T105 Code cleanup and refactoring across all modules
+- [ ] T106 Update pattern-agent.cabal exposed-modules list
 
 ---
 
@@ -342,6 +346,6 @@ With multiple developers:
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
-- Total tasks: 102
-- MVP scope: Phases 1-3 (User Story 1 only) = 23 tasks
-- Full feature scope: All phases = 102 tasks
+- Total tasks: 106
+- MVP scope: Phases 1-3 (User Story 1 only) = 26 tasks
+- Full feature scope: All phases = 106 tasks
