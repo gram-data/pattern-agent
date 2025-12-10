@@ -1,0 +1,29 @@
+# pattern-agent Development Guidelines
+
+Auto-generated from all feature plans. Last updated: 2025-12-10
+
+## Active Technologies
+
+- Haskell / GHC 2024 (GHC2024 language standard) (001-foundation-setup)
+
+## Project Structure
+
+```text
+src/
+tests/
+```
+
+## Commands
+
+# Add commands for Haskell / GHC 2024 (GHC2024 language standard)
+
+## Code Style
+
+Haskell / GHC 2024 (GHC2024 language standard): Follow standard conventions
+
+## Recent Changes
+
+- 001-foundation-setup: Added Haskell / GHC 2024 (GHC2024 language standard)
+
+<!-- MANUAL ADDITIONS START -->
+<!-- MANUAL ADDITIONS END -->
