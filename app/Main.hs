@@ -127,7 +127,3 @@ main = do
               putStrLn ""
               putStrLn $ "Model: " ++ unpack (LLM.responseModel response)
               exitSuccess
-    _ -> do
-      putStrLn "Error: Too many arguments"
-      putStrLn "Usage: pattern-agent <message>"
-      exitFailure
