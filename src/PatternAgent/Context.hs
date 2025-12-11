@@ -48,8 +48,9 @@ emptyContext = []
 
 -- | Adds a message to conversation context.
 --
--- Returns new context with message appended. Original context unchanged.
-addMessage :: MessageRole -> Text -> ConversationContext -> ConversationContext
+-- Returns Right with new context if message is valid, Left with error otherwise.
+-- Original context unchanged (pure function).
+addMessage :: MessageRole -> Text -> ConversationContext -> Either Text ConversationContext
 addMessage role content context = case createMessage role content of
-  Right msg -> context ++ [msg]
-  Left _ -> context  -- Skip invalid messages (or could return error)
+  Right msg -> Right $ context ++ [msg]
+  Left err -> Left err
