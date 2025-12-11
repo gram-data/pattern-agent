@@ -17,13 +17,14 @@ import PatternAgent.Agent
 testCreateAgentWithIdentity :: TestTree
 testCreateAgentWithIdentity = testCase "Create agent with name, description, and model" $ do
   let model = createModel "gpt-4" OpenAI
-  let result = createAgent "capital_agent" model (Just "Answers questions about capital cities")
+  let result = createAgent "capital_agent" model "You are an agent that provides capital cities of countries." (Just "Answers questions about capital cities")
   
   case result of
     Right agent -> do
       -- Verify agent has correct identity
       agentName agent @?= "capital_agent"
       agentDescription agent @?= Just "Answers questions about capital cities"
+      agentInstruction agent @?= "You are an agent that provides capital cities of countries."
       modelId (agentModel agent) @?= "gpt-4"
       modelProvider (agentModel agent) @?= OpenAI
     Left err -> assertFailure $ "Failed to create agent: " ++ show err
@@ -38,8 +39,8 @@ testAgentUniquelyIdentified = testCase "Agent can be uniquely identified by name
   let model1 = createModel "gpt-4" OpenAI
   let model2 = createModel "gpt-3.5-turbo" OpenAI
   
-  let agent1 = case createAgent "agent_1" model1 (Just "First agent") of Right a -> a; Left _ -> error "Should not fail"
-  let agent2 = case createAgent "agent_2" model2 (Just "Second agent") of Right a -> a; Left _ -> error "Should not fail"
+  let agent1 = case createAgent "agent_1" model1 "You are agent 1." (Just "First agent") of Right a -> a; Left _ -> error "Should not fail"
+  let agent2 = case createAgent "agent_2" model2 "You are agent 2." (Just "Second agent") of Right a -> a; Left _ -> error "Should not fail"
   
   -- Verify agents have different names
   agentName agent1 @?= "agent_1"
@@ -54,7 +55,7 @@ testAgentUniquelyIdentified = testCase "Agent can be uniquely identified by name
 testAgentUsesSpecifiedModel :: TestTree
 testAgentUsesSpecifiedModel = testCase "Agent uses specified model" $ do
   let model = createModel "gpt-4" OpenAI
-  let agent = case createAgent "test_agent" model Nothing of Right a -> a; Left _ -> error "Should not fail"
+  let agent = case createAgent "test_agent" model "You are a test agent." Nothing of Right a -> a; Left _ -> error "Should not fail"
   
   -- Verify model configuration
   let configuredModel = agentModel agent

@@ -130,7 +130,9 @@ test-suite pattern-agent-test
     default-language: GHC2024
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules:
+        AgentTest,
+        AgentIdentityTest
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -139,7 +141,7 @@ test-suite pattern-agent-test
     type:             exitcode-stdio-1.0
 
     -- Directories containing source files.
-    hs-source-dirs:   test
+    hs-source-dirs:   test, tests/unit, tests/scenario
 
     -- The entrypoint to the test suite.
     main-is:          Main.hs

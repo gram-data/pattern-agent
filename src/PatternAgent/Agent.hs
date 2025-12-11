@@ -12,6 +12,8 @@ module PatternAgent.Agent
   , Provider(..)
     -- * Agent Creation
   , createAgent
+    -- * Model Creation (re-exported from LLM)
+  , createModel
     -- * Accessors
   , agentName
   , agentDescription
@@ -19,7 +21,7 @@ module PatternAgent.Agent
   , agentInstruction
   ) where
 
-import PatternAgent.LLM (Model(..), Provider(..))
+import PatternAgent.LLM (Model(..), Provider(..), createModel)
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
