@@ -202,15 +202,7 @@ sendOpenAIRequestWithRaw :: LLMClient -> LLMRequest -> IO (Either Text LLMRespon
 sendOpenAIRequestWithRaw client request = do
   manager <- newManager tlsManagerSettings
   
-  -- Build request body
-  let requestBody = object
-        [ "model" .= requestModel request
-        , "messages" .= requestMessages request
-        , "temperature" .= requestTemperature request
-        , "max_tokens" .= requestMaxTokens request
-        ]
-  
-  -- Create HTTP request
+  -- Create HTTP request (using ToJSON instance which correctly omits Nothing values)
   initialRequest <- parseRequest $ unpack (clientBaseURL client <> "/chat/completions")
   let httpRequest = initialRequest
         { method = "POST"
@@ -218,7 +210,7 @@ sendOpenAIRequestWithRaw client request = do
             [ ("Authorization", "Bearer " <> encodeUtf8 (clientApiKey client))
             , ("Content-Type", "application/json")
             ]
-        , requestBody = RequestBodyLBS $ encode requestBody
+        , requestBody = RequestBodyLBS $ encode request
         }
   
   -- Execute request
