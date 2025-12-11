@@ -46,20 +46,25 @@ parseEnvLine line = do
   -- Remove leading/trailing whitespace
   let trimmed = dropWhileEnd (== ' ') $ dropWhile (== ' ') line
   -- Skip empty lines and comments
-  if null trimmed || head trimmed == '#'
-    then Nothing
-    else do
+  case trimmed of
+    [] -> Nothing
+    '#':_ -> Nothing
+    _ -> do
       -- Split on first '='
       case break (== '=') trimmed of
         (key, '=':value) -> do
           let key' = dropWhileEnd (== ' ') key
-          let value' = dropWhile (== ' ') value
-          -- Remove quotes if present
-          let value'' = case value' of
-                '"':rest -> if not (null rest) && last rest == '"' then init rest else value'
-                '\'':rest -> if not (null rest) && last rest == '\'' then init rest else value'
-                _ -> value'
-          Just (key', value'')
+          -- Validate that key is non-empty (POSIX env var names cannot be empty)
+          if null key'
+            then Nothing
+            else do
+              let value' = dropWhile (== ' ') value
+              -- Remove quotes if present
+              let value'' = case value' of
+                    '"':rest -> if not (null rest) && last rest == '"' then init rest else value'
+                    '\'':rest -> if not (null rest) && last rest == '\'' then init rest else value'
+                    _ -> value'
+              Just (key', value'')
         _ -> Nothing
 
 -- | Load environment variables from .env file if it exists.
