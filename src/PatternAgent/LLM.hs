@@ -34,19 +34,11 @@ module PatternAgent.LLM
   , parseResponse
   , parseOpenAIResponse
     -- * Response Accessors
-  , responseText
-  , responseModel
-  , responseUsage
-    -- * Usage Accessors
-  , Usage(..)
-  , usagePromptTokens
-  , usageCompletionTokens
-  , usageTotalTokens
   ) where
 
 import Control.Exception (try, SomeException)
 import Data.Aeson
-import Data.Aeson.Types (parseMaybe, withObject, (.:), (.:?))
+import Data.Aeson.Types (parseMaybe)
 import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (encodeUtf8)
@@ -135,7 +127,8 @@ createOpenAIClient apiKey = LLMClient
 createClientForModel :: Model -> IO (Either ApiKeyError LLMClient)
 createClientForModel model = do
   -- Try to load .env file first (if it exists)
-  loadEnvFile
+  -- Ignore parse errors (file might be malformed but env vars could still be set directly)
+  _ <- loadEnvFile
   
   let (envVar, providerName, baseURL) = case modelProvider model of
         OpenAI -> ("OPENAI_API_KEY", "OpenAI", "https://api.openai.com/v1")
@@ -156,7 +149,8 @@ createClientForModel model = do
 loadApiKeyFromEnv :: Text -> IO (Either ApiKeyError Text)
 loadApiKeyFromEnv envVar = do
   -- Try to load .env file first (if it exists)
-  loadEnvFile
+  -- Ignore parse errors (file might be malformed but env vars could still be set directly)
+  _ <- loadEnvFile
   
   maybeKey <- lookupEnv (unpack envVar)
   case maybeKey of
@@ -190,12 +184,6 @@ sendRequestWithRawResponse client request = do
     OpenAI -> sendOpenAIRequestWithRaw client request
     Anthropic -> return (Left "Anthropic provider not yet implemented", Nothing)
     Google -> return (Left "Google provider not yet implemented", Nothing)
-
--- | Send request to OpenAI API.
-sendOpenAIRequest :: LLMClient -> LLMRequest -> IO (Either Text LLMResponse)
-sendOpenAIRequest client request = do
-  (result, _) <- sendOpenAIRequestWithRaw client request
-  return result
 
 -- | Send request to OpenAI API and return both parsed response and raw JSON.
 sendOpenAIRequestWithRaw :: LLMClient -> LLMRequest -> IO (Either Text LLMResponse, Maybe ByteString)

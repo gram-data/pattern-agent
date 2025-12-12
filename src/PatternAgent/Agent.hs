@@ -14,11 +14,6 @@ module PatternAgent.Agent
   , createAgent
     -- * Model Creation (re-exported from LLM)
   , createModel
-    -- * Accessors
-  , agentName
-  , agentDescription
-  , agentModel
-  , agentInstruction
   ) where
 
 import PatternAgent.LLM (Model(..), Provider(..), createModel)

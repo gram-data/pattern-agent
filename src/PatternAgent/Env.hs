@@ -14,7 +14,6 @@ module PatternAgent.Env
   ) where
 
 import Data.List (dropWhileEnd)
-import Data.Maybe (mapMaybe)
 import System.Directory (doesFileExist)
 import System.Environment (lookupEnv, setEnv)
 
@@ -32,23 +31,29 @@ data EnvParseError
 -- - Comments: Lines starting with # are ignored
 -- - Empty lines are ignored
 --
+-- Returns Right with parsed key-value pair, or Left with error message
+-- for malformed lines that should have been parsed.
+--
 -- Examples:
 -- >>> parseEnvLine "OPENAI_API_KEY=sk-123"
--- Just ("OPENAI_API_KEY", "sk-123")
+-- Right (Just ("OPENAI_API_KEY", "sk-123"))
 --
 -- >>> parseEnvLine "KEY=\"quoted value\""
--- Just ("KEY", "quoted value")
+-- Right (Just ("KEY", "quoted value"))
 --
 -- >>> parseEnvLine "# This is a comment"
--- Nothing
-parseEnvLine :: String -> Maybe (String, String)
+-- Right Nothing
+--
+-- >>> parseEnvLine "INVALID LINE"
+-- Left (EnvParseError "Missing '=' separator in line: \"INVALID LINE\"")
+parseEnvLine :: String -> Either EnvParseError (Maybe (String, String))
 parseEnvLine line = do
   -- Remove leading/trailing whitespace
   let trimmed = dropWhileEnd (== ' ') $ dropWhile (== ' ') line
-  -- Skip empty lines and comments
+  -- Skip empty lines and comments (these are valid, not errors)
   case trimmed of
-    [] -> Nothing
-    '#':_ -> Nothing
+    [] -> Right Nothing
+    '#':_ -> Right Nothing
     _ -> do
       -- Split on first '='
       case break (== '=') trimmed of
@@ -56,7 +61,7 @@ parseEnvLine line = do
           let key' = dropWhileEnd (== ' ') key
           -- Validate that key is non-empty (POSIX env var names cannot be empty)
           if null key'
-            then Nothing
+            then Left $ EnvParseError "Empty key name (missing key before '=')"
             else do
               let value' = dropWhile (== ' ') value
               -- Remove quotes if present
@@ -64,8 +69,8 @@ parseEnvLine line = do
                     '"':rest -> if not (null rest) && last rest == '"' then init rest else value'
                     '\'':rest -> if not (null rest) && last rest == '\'' then init rest else value'
                     _ -> value'
-              Just (key', value'')
-        _ -> Nothing
+              Right $ Just (key', value'')
+        _ -> Left $ EnvParseError $ "Missing '=' separator in line: " ++ show trimmed
 
 -- | Load environment variables from .env file if it exists.
 --
@@ -73,8 +78,9 @@ parseEnvLine line = do
 -- KEY=value pairs into the environment. Variables that are already
 -- set in the environment are not overridden.
 --
--- This is a no-op if the .env file doesn't exist.
-loadEnvFile :: IO ()
+-- Returns Right () on success, Left with error if parsing fails.
+-- Returns Right () if the .env file doesn't exist (no error).
+loadEnvFile :: IO (Either EnvParseError ())
 loadEnvFile = loadEnvFileFrom ".env"
 
 -- | Load environment variables from a specific .env file.
@@ -82,20 +88,40 @@ loadEnvFile = loadEnvFileFrom ".env"
 -- Loads all KEY=value pairs from the specified file into the environment.
 -- Variables that are already set in the environment are not overridden.
 --
--- This is a no-op if the file doesn't exist.
-loadEnvFileFrom :: FilePath -> IO ()
+-- Returns Right () on success, Left with error if parsing fails.
+-- Returns Right () if the file doesn't exist (no error).
+loadEnvFileFrom :: FilePath -> IO (Either EnvParseError ())
 loadEnvFileFrom filePath = do
   envExists <- doesFileExist filePath
   if envExists
     then do
       contents <- readFile filePath
       let lines' = lines contents
-      let vars = mapMaybe parseEnvLine lines'
-      -- Only set variables that aren't already in the environment
-      mapM_ (\(key, value) -> do
-        existing <- lookupEnv key
-        case existing of
-          Nothing -> setEnv key value
-          Just _ -> return ()  -- Don't override existing env vars
-        ) vars
-    else return ()
+      -- Parse all lines and collect errors
+      let parseResults = zip [1..] $ map parseEnvLine lines'
+      -- Find first error, if any
+      case foldl findFirstError Nothing parseResults of
+        Just err -> return $ Left err
+        Nothing -> do
+          -- Extract all successfully parsed key-value pairs
+          let vars = concatMap (\(_, result) -> case result of
+                Right (Just kv) -> [kv]
+                _ -> []) parseResults
+          -- Only set variables that aren't already in the environment
+          mapM_ (\(key, value) -> do
+            existing <- lookupEnv key
+            case existing of
+              Nothing -> setEnv key value
+              Just _ -> return ()  -- Don't override existing env vars
+            ) vars
+          return $ Right ()
+    else return $ Right ()
+  where
+    findFirstError :: Maybe EnvParseError -> (Int, Either EnvParseError (Maybe (String, String))) -> Maybe EnvParseError
+    findFirstError acc (lineNum, result) = case acc of
+      Just err -> Just err  -- Already found an error
+      Nothing -> case result of
+        Left err -> Just $ case err of
+          EnvParseError msg -> EnvParseError $ "Line " ++ show lineNum ++ ": " ++ msg
+          EnvFileNotFound _ -> EnvParseError $ "Line " ++ show lineNum ++ ": unexpected file error"  -- Shouldn't happen here
+        Right _ -> Nothing

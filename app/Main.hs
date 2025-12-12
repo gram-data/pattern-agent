@@ -3,9 +3,7 @@ module Main where
 
 import qualified PatternAgent.LLM as LLM
 import Control.Monad (when)
-import Data.Aeson (encode, Value)
 import Data.Aeson.Encode.Pretty (encodePretty)
-import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import qualified Data.Text.Lazy as TL
@@ -25,7 +23,7 @@ parseArgs :: [String] -> (Bool, Maybe String)
 parseArgs args = go False Nothing args
   where
     go debug msg [] = (debug, msg)
-    go debug msg ("--debug":rest) = go True msg rest
+    go _ msg ("--debug":rest) = go True msg rest
     go debug Nothing (m:rest) = go debug (Just m) rest
     go debug (Just _) (m:rest) = go debug (Just m) rest  -- Multiple messages, take last
 
