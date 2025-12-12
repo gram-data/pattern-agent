@@ -359,14 +359,14 @@ Use `haskell-tools.nvim` or `coc-haskell` with HLS.
 
 ### Module Structure
 
-- **`PatternAgent.Core`**: Core type definitions
+- **`PatternAgent.Core`**: Core type definitions (re-exports PatternAgent type)
 - **`PatternAgent.Types`**: Type aliases and supporting types
 - **`PatternAgent.Agent`**: Agent type and creation
 - **`PatternAgent.LLM`**: Standalone LLM API client
 - **`PatternAgent.Execution`**: Agent execution logic
 - **`PatternAgent.Context`**: Conversation context management
 - **`PatternAgent.Env`**: Environment variable loading from .env files
-- **`PatternAgent.Tool`**: Tool system (in development)
+- **`PatternAgent.Tool`**: Tool system (not yet implemented)
 
 ### Adding New Features
 
