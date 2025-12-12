@@ -17,7 +17,7 @@ Pattern Agents provides tools for reasoning about and experimenting with differe
 An agent system is represented as a Pattern where:
 - **Atomic patterns:** Single agents that cannot be meaningfully factorized further (prime agents)
 - **Compound patterns:** Multi-agent systems represented as DAGs of sub-agents
-- **V (Agent value):** Contains all information defining agent capability (prompt, tools, constraints)
+- **V (Agent value):** Contains all information defining agent capability (name, description, model, instruction)
 - **Elements:** Sub-agents in a decomposition
 - **Equivalence:** Different patterns that accomplish the same goal through different means
 

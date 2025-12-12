@@ -1,13 +1,11 @@
 -- | Core PatternAgent type definitions and basic operations.
 --
--- This module provides the core PatternAgent API including:
--- - Type definitions
--- - Construction functions
--- - Query functions
--- - Validation functions
+-- This module provides the core PatternAgent API by re-exporting
+-- the PatternAgent type alias and Agent type from PatternAgent.Types.
 --
--- This is a placeholder module. Full implementation will be completed
--- in User Story 3 (Pattern<Agent> Type Definition).
+-- The PatternAgent type alias (Pattern<Agent>) is fully implemented
+-- and ready for use. Additional operations (construction, query, validation)
+-- will be added in future user stories.
 module PatternAgent.Core
   ( -- Re-export types from Types module
     module PatternAgent.Types

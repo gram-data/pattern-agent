@@ -61,7 +61,12 @@ library
     -- Modules exported by the library.
     exposed-modules:
         PatternAgent.Core,
-        PatternAgent.Types
+        PatternAgent.Types,
+        PatternAgent.LLM,
+        PatternAgent.Agent,
+        PatternAgent.Execution,
+        PatternAgent.Context,
+        PatternAgent.Env
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -73,7 +78,15 @@ library
     build-depends:
         base ^>=4.20.2.0,
         pattern,
-        hashable ^>=1.4
+        hashable ^>=1.4,
+        http-client ^>=0.7,
+        http-client-tls ^>=0.3,
+        http-types ^>=0.12,
+        aeson >=2.1,
+        bytestring ^>=0.11,
+        text >=2.0,
+        mtl ^>=2.3,
+        directory ^>=1.3
 
     -- Directories containing source files.
     hs-source-dirs:   src
@@ -97,7 +110,11 @@ executable pattern-agent
     -- Other library packages from which modules are imported.
     build-depends:
         base ^>=4.20.2.0,
-        pattern-agent
+        pattern-agent,
+        aeson >=2.1,
+        aeson-pretty ^>=0.8,
+        text >=2.0,
+        bytestring ^>=0.11
 
     -- Directories containing source files.
     hs-source-dirs:   app
@@ -113,7 +130,9 @@ test-suite pattern-agent-test
     default-language: GHC2024
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules:
+        AgentTest,
+        AgentIdentityTest
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -122,7 +141,7 @@ test-suite pattern-agent-test
     type:             exitcode-stdio-1.0
 
     -- Directories containing source files.
-    hs-source-dirs:   test
+    hs-source-dirs:   test, tests/unit, tests/scenario
 
     -- The entrypoint to the test suite.
     main-is:          Main.hs
@@ -134,4 +153,5 @@ test-suite pattern-agent-test
         pattern,
         tasty ^>=1.4,
         tasty-hunit ^>=0.10,
-        tasty-quickcheck ^>=0.10
+        tasty-quickcheck ^>=0.10,
+        text >=2.0

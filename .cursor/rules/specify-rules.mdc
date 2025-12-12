@@ -3,6 +3,7 @@
 Auto-generated from all feature plans. Last updated: 2025-12-10
 
 ## Active Technologies
+- In-memory conversation context (no persistence required for initial implementation) (002-llm-agent)
 
 - Haskell / GHC 2024 (GHC2024 language standard) (001-foundation-setup)
 
@@ -22,6 +23,7 @@ tests/
 Haskell / GHC 2024 (GHC2024 language standard): Follow standard conventions
 
 ## Recent Changes
+- 002-llm-agent: Added Haskell / GHC 2024 (GHC2024 language standard)
 
 - 001-foundation-setup: Added Haskell / GHC 2024 (GHC2024 language standard)
 
