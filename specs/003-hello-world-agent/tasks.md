@@ -23,10 +23,10 @@
 
 **Purpose**: Project initialization and dependency setup
 
-- [ ] T001 Update pattern-agent.cabal with any additional dependencies if needed (verify existing dependencies are sufficient)
-- [ ] T002 [P] Verify test directory structure exists: tests/unit/ and tests/scenario/
-- [ ] T003 [P] Create new module: src/PatternAgent/Tool.hs for tool system
-- [ ] T004 [P] Create new module: src/PatternAgent/HelloWorld.hs for hello world example
+- [X] T001 Update pattern-agent.cabal with any additional dependencies if needed (verify existing dependencies are sufficient)
+- [X] T002 [P] Verify test directory structure exists: tests/unit/ and tests/scenario/
+- [X] T003 [P] Create new module: src/PatternAgent/Tool.hs for tool system
+- [X] T004 [P] Create new module: src/PatternAgent/HelloWorld.hs for hello world example
 
 ---
 

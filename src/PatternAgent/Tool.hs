@@ -1,14 +1,23 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- | Tool system for LLM agents.
 --
--- This module will provide tool abstraction and function tool implementation
+-- This module provides tool abstraction and function tool implementation
 -- for equipping agents with capabilities beyond their base LLM functionality.
 --
--- Status: Not yet implemented. Planned for User Story 3 (Tool Integration).
--- See specs/002-llm-agent/ for design details.
+-- Status: Phase 1 setup complete. Implementation will follow in Phase 2.
+-- See specs/003-hello-world-agent/ for design details.
 --
--- When implemented, this module will provide:
--- - Tool type definition
--- - Function tool creation
--- - Tool schema management
--- - Tool invocation support
+-- This module will provide:
+-- - ToolSpecification type (serializable tool descriptions)
+-- - Tool type (executable tool implementations)
+-- - ToolLibrary type (tool registry)
+-- - Type signature parsing and JSON schema generation
+-- - Tool creation and validation functions
 
+module PatternAgent.Tool
+  ( -- Types will be exported here in Phase 2
+  ) where
+
+-- Implementation will be added in Phase 2: Foundational
