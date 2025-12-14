@@ -7,7 +7,7 @@
 
 ## Summary
 
-Complete agent execution infrastructure by implementing tool creation, tool association with agents, and tool execution during agent runs. **The implementation begins with designing the gram notation format for tool specifications, including Hindley-Milner style type signatures (e.g., `(name: Text) --> IO Text`).** This design artifact (tool description format) will then be used for all subsequent implementation steps. The feature anchors the implementation in a concrete "hello world" example agent that uses the `sayHello` tool to respond to user greetings, demonstrating the complete tool execution flow end-to-end. The implementation builds upon existing execution infrastructure (Execution.hs) and LLM client (LLM.hs) to add tool support, enabling agents to extend their capabilities beyond the LLM's built-in knowledge.
+Complete agent execution infrastructure by implementing tool creation, tool association with agents, and tool execution during agent runs. **The implementation begins with designing the gram notation format for tool specifications, using gram path notation in curried form with property records for type signatures (e.g., `(::Text {paramName:"name"})==>(::String)`).** This design artifact (tool description format) will then be used for all subsequent implementation steps. The feature anchors the implementation in a concrete "hello world" example agent that uses the `sayHello` tool to respond to user greetings, demonstrating the complete tool execution flow end-to-end. The implementation builds upon existing execution infrastructure (Execution.hs) and LLM client (LLM.hs) to add tool support, enabling agents to extend their capabilities beyond the LLM's built-in knowledge.
 
 ## Technical Context
 
@@ -35,7 +35,7 @@ Complete agent execution infrastructure by implementing tool creation, tool asso
 - Tool invocation detection and execution: < 2 seconds for typical tools (95% success rate for valid tool calls)
 - Tool result integration: 95% success rate for incorporating tool results into agent responses
 **Constraints**: 
-- **Phase 0.5 (FIRST STEP)**: Must design gram notation format for tool specifications with Hindley-Milner style type signatures before any implementation
+- **Phase 0.5 (FIRST STEP)**: Must design gram notation format for tool specifications with curried form type signatures (gram path notation with property records) before any implementation
 - Must support OpenAI function calling format (tool calls in LLM responses)
 - Must generate JSON schemas automatically from gram type signatures (not manual schemas)
 - Must validate tool parameters against JSON schemas before invocation
@@ -103,7 +103,7 @@ Complete agent execution infrastructure by implementing tool creation, tool asso
 
 ### Principle 5: Progressive Iteration
 - [x] **Simplest Solution First**: Initial implementation will start with:
-  - **Phase 0.5**: Design gram notation format for tool specifications (type signatures in Hindley-Milner style)
+  - **Phase 0.5**: Design gram notation format for tool specifications (type signatures in curried form with property records)
   - Simple tool creation API (name, description, gram type signature, invoke function)
   - Automatic JSON schema generation from gram type signatures
   - Direct tool association with agents (list of tool specifications)
@@ -126,10 +126,10 @@ Complete agent execution infrastructure by implementing tool creation, tool asso
 
 **Prerequisites**: Phase 0 research complete
 
-**Purpose**: Design the gram notation format for tool specifications, including type signature representation in Hindley-Milner style. This design artifact will be used by all subsequent implementation steps.
+**Purpose**: Design the gram notation format for tool specifications, including type signature representation in curried form with property records (gram path notation). This design artifact will be used by all subsequent implementation steps.
 
 **Deliverables**:
-1. **Gram Type Signature Grammar**: Define the grammar for representing tool type signatures in gram notation (e.g., `(name: Text) --> IO Text`)
+1. **Gram Type Signature Grammar**: Define the grammar for representing tool type signatures in gram path notation using curried form with property records (e.g., `(::Text {paramName:"name"})==>(::String)`)
 2. **ToolSpecification Gram Schema**: Design the complete gram schema for ToolSpecification including:
    - Tool name
    - Tool description

@@ -36,9 +36,11 @@ Function signatures in gram represent JSON Schema types, not full Haskell types:
 ## Quick Reference: Function Signature Syntax
 
 **Simple Function Type** (JSON Schema types only):
-- `(Text)==>(String)` - Double arrow (simplest)
+- `(Text)==>(String)` - Double arrow (used by convention for clarity)
 - `(Text)-[func]->(String)` - With relationship identifier
 - `(Text)-[:FunctionType]->(String)` - With relationship label
+
+**Note**: Gram treats all arrow types (`==>`, `-->`, `~~>`, etc.) as semantically equivalent - they are decorative. We use `==>` by convention for clarity in function type signatures, but any valid gram relationship arrow would work.
 
 **Parameter Types** (JSON Schema compatible):
 - `(name: Text)` - String parameter
@@ -679,12 +681,14 @@ Need to define standard JSON Schema type nodes:
 
 Standard relationship type for function arrows:
 ```gram
-==>  // Function type arrow (double arrow)
+==>  // Function type arrow (double arrow, used by convention for clarity)
 -[maps_to]->  // Explicit mapping relationship
 -[:FunctionType]->  // Function type relationship
 -[:has_type]->  // Field/parameter has type
 -[:is_input_of]->  // Parameter is input of function
 ```
+
+**Note**: Gram treats all arrow types (`==>`, `-->`, `~~>`, etc.) as semantically equivalent - they are decorative. We use `==>` by convention for clarity in function type signatures, but any valid gram relationship arrow would work.
 
 ### Parsing Strategy
 
@@ -894,10 +898,12 @@ Or with explicit relationship:
 Based on testing with `gram-lint`, the following syntax patterns are valid for function signatures:
 
 ### Function Type Syntax
-- `(A)==>(B)` - Double arrow (simplest for function types)
+- `(A)==>(B)` - Double arrow (used by convention for clarity; gram treats all arrow types as equivalent)
 - `(A)-[func]->(B)` - Relationship with identifier
 - `(A)-[:FunctionType]->(B)` - Anonymous relationship with label
 - `(A)-[func:FunctionType]->(B)` - Relationship with identifier and label
+
+**Note**: Arrow types (`==>`, `-->`, `~~>`, etc.) are decorative in gram - they have no enforced semantics. We use `==>` by convention for clarity.
 
 ### JSON Schema Type Syntax
 - `[Object:JSONType {schemaType: "object"} | fields]` - Pattern notation for objects
@@ -933,10 +939,12 @@ Based on testing with `gram-lint`, the following syntax patterns are valid for f
 3. **Haskell → Gram** (optional): Convert Haskell to gram, but only if JSON Schema expressible
 
 **Verified Syntax**:
-- Double arrow `==>` works for simple function types
+- Double arrow `==>` works for simple function types (used by convention; gram treats all arrow types as equivalent)
 - Relationship identifiers work: `(A)-[func]->(B)`
 - Pattern notation works for objects/arrays: `[Object:JSONType | fields]`
 - Pattern notation can contain paths: `[funcType | (Text)==>(String)]`
+
+**Note on Arrow Types**: Gram does not distinguish between `==>`, `-->`, `~~>`, etc. - they are decorative and semantically equivalent. We use `==>` by convention for clarity in function type signatures.
 
 **Recommendation**: Start with hybrid approach (text + optional path), evaluate benefits, then decide on full migration. Focus on JSON Schema types, not Haskell implementation details.
 

@@ -22,7 +22,7 @@ Creates a tool specification with gram type signature (serializable, no implemen
 createToolSpecification
   :: Text              -- name: Unique tool name
   -> Text              -- description: Tool description
-  -> Text              -- typeSignature: Type signature in gram notation (e.g., "(name: Text) --> IO Text")
+  -> Text              -- typeSignature: Type signature in gram path notation (curried form, e.g., "(::Text {paramName:\"name\"})==>(::String)")
   -> ToolSpecification
 ```
 
@@ -41,15 +41,16 @@ createToolSpecification
 let sayHelloSpec = createToolSpecification
       "sayHello"
       "Returns a friendly greeting message for the given name"
-      "(name: Text) --> IO Text"
+      -- Type signature in curried form: (::Text {paramName:"name"})==>(::String)
+      -- (Implementation may parse from text or gram path notation)
 ```
 
-**Type Signature Format**:
-- Simple: `(Text) --> IO Text`
-- Named parameter: `(name: Text) --> IO Text`
-- Multiple parameters: `(name: Text, age: Int) --> IO Text`
-- Optional parameter: `(name: Text, age: Maybe Int) --> IO Text`
-- Record parameter: `(params: {name: Text, age: Int}) --> IO Text`
+**Type Signature Format** (Curried Form with Property Records):
+- Simple: `(::Text)==>(::String)`
+- Named parameter: `(::Text {paramName:"name"})==>(::String)`
+- Multiple parameters: `(::Text {paramName:"name"})==>(::Int {paramName:"age"})==>(::String)`
+- Optional parameter: `(::Text {paramName:"name"})==>(::Int {paramName:"age", optional:true})==>(::String)`
+- Record parameter: `(::Object {paramName:"params", fields:[{name:"name", type:"Text"}, {name:"age", type:"Int"}]})==>(::String)`
 
 ## Tool Implementation Creation
 
@@ -308,7 +309,9 @@ typeSignatureToJSONSchema
 
 **Example**:
 ```haskell
-case typeSignatureToJSONSchema "(name: Text) --> IO Text" of
+-- Type signature in curried form (gram path notation)
+let typeSig = "(::Text {paramName:\"name\"})==>(::String)"
+case typeSignatureToJSONSchema typeSig of
   Right schema -> -- Use schema
   Left error -> -- Handle error
 ```
@@ -366,11 +369,14 @@ ToolSpecification is fully serializable (ToJSON, FromJSON instances).
 
 **Serialization Format** (gram notation):
 ```gram
-toolSpecification: sayHello
-  name: "sayHello"
+[sayHello:ToolSpecification {
   description: "Returns a friendly greeting message for the given name"
-  typeSignature: "(name: Text) --> IO Text"
+} |
+  (::Text {paramName:"name"})==>(::String)
+]
 ```
+
+**Note**: Tool name is stored as the pattern identifier (`sayHello:ToolSpecification`), not as a property. This ensures global uniqueness required for LLM tool calling.
 
 **Note**: JSON schema is generated from type signature during deserialization, not stored.
 
@@ -379,7 +385,7 @@ toolSpecification: sayHello
 {
   "name": "sayHello",
   "description": "Returns a friendly greeting message for the given name",
-  "typeSignature": "(name: Text) --> IO Text",
+  "typeSignature": "(::Text {paramName:\"name\"})==>(::String)",
   "schema": {
     "type": "object",
     "properties": {
@@ -392,7 +398,7 @@ toolSpecification: sayHello
 }
 ```
 
-**Note**: The `schema` field is auto-generated from `typeSignature` and included for convenience, but `typeSignature` is the source of truth.
+**Note**: The `schema` field is auto-generated from `typeSignature` (curried form gram path notation) and included for convenience, but `typeSignature` is the source of truth.
 
 ### Tool Serialization
 

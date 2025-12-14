@@ -1,5 +1,6 @@
-toolSpecification: sayHello
-  name: "sayHello"
+[sayHello:ToolSpecification {
   description: "Returns a friendly greeting message for the given name"
-  typeSignature: "(name: Text) --> IO Text"
+} |
+  (::Text {paramName:"name"})==>(::String)
+]
 
