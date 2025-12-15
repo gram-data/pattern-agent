@@ -196,26 +196,26 @@
 - Review TODO.md requirements for tool description/implementation separation
 
 **Findings**:
-- **Decision**: Separate ToolSpecification (serializable, declarative) from Tool (executable, bound at runtime) with ToolLibrary for late binding
+- **Decision**: Separate Tool (Pattern, serializable, declarative) from ToolImpl (executable, bound at runtime) with ToolLibrary for late binding
 - **Rationale**:
   - Gram notation requires serializable agent specifications (tool implementations contain function closures, not serializable)
   - Late binding enables A/B testing: same agent specification with different tool implementations
   - ToolLibrary pattern maps tool names to implementations, enabling runtime binding
   - Separation aligns with TODO.md requirement: "tool descriptions in gram, implementations bound at execution time"
 - **Architecture**:
-  - **ToolSpecification**: Contains name, description, schema (serializable, used in Agent)
-  - **Tool**: Contains name, description, schema, invoke function (executable, registered in ToolLibrary)
-  - **ToolLibrary**: Registry mapping tool names to Tool implementations
-  - **Binding**: At execution time, ToolSpecifications bound to Tools from ToolLibrary
+  - **Tool** (Pattern Subject): Contains name, description, type signature (serializable, used in Agent)
+  - **ToolImpl**: Contains name, description, schema, invoke function (executable, registered in ToolLibrary)
+  - **ToolLibrary**: Registry mapping tool names to ToolImpl implementations
+  - **Binding**: At execution time, Tools bound to ToolImpls from ToolLibrary
 - **Flow**:
-  1. Gram notation → Agent with ToolSpecifications (serializable)
-  2. Deserialization → Agent with ToolSpecifications
-  3. Execution environment → ToolLibrary with Tool implementations
-  4. Tool binding → Match ToolSpecifications to Tools from ToolLibrary
-  5. Execution → Use bound Tools to invoke
+  1. Gram notation → Agent with Tools (serializable Pattern)
+  2. Deserialization → Agent with Tools (Pattern)
+  3. Execution environment → ToolLibrary with ToolImpl implementations
+  4. Tool binding → Match Tools to ToolImpls from ToolLibrary
+  5. Execution → Use bound ToolImpls to invoke
 - **A/B Testing**:
-  - Same Agent (with ToolSpecifications) can be executed with different ToolLibrary instances
-  - Different ToolLibrary instances provide different Tool implementations for same tool name
+  - Same Agent (with Tools) can be executed with different ToolLibrary instances
+  - Different ToolLibrary instances provide different ToolImpl implementations for same tool name
   - Enables comparing tool implementation effectiveness
 - **Alternatives Considered**:
   - Tool with implementation in Agent - rejected (not serializable, no A/B testing support)
@@ -296,38 +296,38 @@
   - Single parameter keeps implementation straightforward
   - Friendly greeting aligns with agent instructions ("have friendly conversations")
   - Tool serves as concrete example and test case
-- **Tool Specification** (in gram notation):
+- **Tool** (in gram notation):
   - Name: `sayHello`
   - Description: "Returns a friendly greeting message for the given name"
-  - Type Signature: `(personName::Text)==>(::String)` (curried form)
+  - Type Signature: `(personName::Text {default:"world"})==>(::String)` (curried form)
   - JSON Schema: Auto-generated from type signature
 - **Gram Notation Example**:
   ```gram
-  [sayHello:ToolSpecification {
+  [sayHello:Tool {
     description: "Returns a friendly greeting message for the given name"
   } |
-    (personName::Text)==>(::String)
+    (personName::Text {default:"world"})==>(::String)
   ]
   ```
-- **Implementation**:
+- **ToolImpl Implementation**:
   ```haskell
-  sayHelloTool :: Tool
-  sayHelloTool = createTool
+  sayHelloImpl :: ToolImpl
+  sayHelloImpl = createToolImpl
     "sayHello"
     "Returns a friendly greeting message for the given name"
-    (typeSignatureToJSONSchema "(personName::Text)==>(::String)")  -- Auto-generated schema
+    (typeSignatureToJSONSchema "(personName::Text {default:\"world\"})==>(::String)")  -- Auto-generated schema
     (\args -> do
-      -- Extract personName from args JSON
+      -- Extract personName from args JSON (use default if missing)
       -- Return greeting message
     )
   ```
 - **Hello World Agent**:
   - Agent name: "hello_world_agent"
   - Instructions: "You are a friendly assistant. Have friendly conversations with the user. When the user greets you or says hello, use the `sayHello` tool to respond with a personalized greeting."
-  - ToolSpecifications: [sayHelloSpec] (serializable)
+  - Tools: [sayHello] (Pattern, serializable)
   - Model: Any OpenAI model (e.g., gpt-3.5-turbo)
 - **ToolLibrary**:
-  - sayHello Tool registered in ToolLibrary
+  - sayHello ToolImpl registered in ToolLibrary
   - Tool binding happens at execution time
 - **Alternatives Considered**:
   - More complex tool (multiple parameters) - rejected (simpler tool better for hello world example)
@@ -342,7 +342,7 @@ After research, the following clarifications are resolved:
 - **Schema Validation**: Manual JSON schema validation for required fields and types (full schema library deferred)
 - **Tool Invocation Flow**: Iterative execution loop: detect tool call → validate → invoke → send result to LLM → get final response
 - **sayHello Tool**: Simple greeting tool with `name` parameter, returns friendly greeting message
-- **Tool Specification vs Implementation**: Separate ToolSpecification (serializable) from Tool (executable), bind at execution time via ToolLibrary
+- **Tool vs ToolImpl**: Separate Tool (Pattern, serializable) from ToolImpl (executable), bind at execution time via ToolLibrary
 - **Late Binding Architecture**: Tool descriptions in Agent, tool implementations in ToolLibrary, binding happens at execution time for A/B testing support
 - **Gram Type Signatures**: Tool specifications use gram path notation in curried form with parameter names as identifiers (e.g., `(personName::Text)==>(::String)`), JSON schemas auto-generated from type signatures
 
@@ -355,28 +355,28 @@ After research, the following clarifications are resolved:
    - Iterative execution loop until final text response
 
 2. **Tool System Implementation**:
-   - **ToolSpecification**: Serializable tool specification (name, description, gram type signature) - used in Agent
-   - **Type Signature**: Gram path notation in curried form with parameter names as identifiers (e.g., `(personName::Text)==>(::String)`)
+   - **Tool** (Pattern): Serializable tool specification (name, description, gram type signature) - used in Agent
+   - **Type Signature**: Gram path notation in curried form with parameter names as identifiers (e.g., `(personName::Text {default:"world"})==>(::String)`)
    - **Schema Generation**: JSON schemas auto-generated from gram type signatures
-   - **Tool**: Executable tool implementation (name, description, schema, invoke function) - registered in ToolLibrary
-   - **ToolLibrary**: Registry mapping tool names to implementations - enables late binding
-   - **Late Binding**: Tool specifications bound to implementations at execution time via ToolLibrary
+   - **ToolImpl**: Executable tool implementation (name, description, schema, invoke function) - registered in ToolLibrary
+   - **ToolLibrary**: Registry mapping tool names to ToolImpl implementations - enables late binding
+   - **Late Binding**: Tools bound to ToolImpl implementations at execution time via ToolLibrary
    - Parameter validation before invocation
    - Tool execution with error handling
 
 3. **Architecture for A/B Testing**:
-   - Agent contains ToolSpecifications (serializable, declarative)
-   - ToolLibrary contains Tool implementations (executable, bound at runtime)
+   - Agent contains Tools (Pattern, serializable, declarative)
+   - ToolLibrary contains ToolImpl implementations (executable, bound at runtime)
    - Same Agent specification can be executed with different ToolLibrary instances
    - Enables A/B testing: same agent, different tool implementations
 
 4. **Hello World Example**:
-   - sayHello ToolSpecification with gram type signature `(personName::Text)==>(::String)` (serializable, curried form)
+   - sayHello Tool (Pattern) with gram type signature `(personName::Text {default:"world"})==>(::String)` (serializable, curried form)
    - JSON schema auto-generated from type signature
-   - sayHello Tool implementation (executable)
-   - sayHello Tool registered in ToolLibrary
-   - Hello world agent with ToolSpecification
-   - Execution binds ToolSpecification to Tool from ToolLibrary
+   - sayHello ToolImpl implementation (executable)
+   - sayHello ToolImpl registered in ToolLibrary
+   - Hello world agent with Tool
+   - Execution binds Tool to ToolImpl from ToolLibrary
    - Scenario test demonstrating complete flow
 
 ## Notes

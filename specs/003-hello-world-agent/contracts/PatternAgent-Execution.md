@@ -13,10 +13,10 @@ Executes an agent with user input, tool library, and returns the agent's respons
 **Signature**:
 ```haskell
 executeAgentWithLibrary
-  :: Agent                -- agent: Agent to execute (with ToolSpecifications)
+  :: Agent                -- agent: Agent to execute (with Tools)
   -> Text                 -- userInput: User's input message
   -> ConversationContext  -- context: Previous conversation context
-  -> ToolLibrary          -- library: Tool library for binding descriptions to implementations
+  -> ToolLibrary          -- library: Tool library for binding tools to implementations
   -> IO (Either AgentError AgentResponse)
 ```
 
@@ -24,8 +24,8 @@ executeAgentWithLibrary
 - `agent` must be valid (name, model, instruction non-empty)
 - `userInput` must be non-empty
 - `context` can be empty (new conversation)
-- `library` must contain implementations for all tool descriptions in agent (or tool binding will fail)
-- If agent has tool descriptions, tool names must be unique within agent's tool description list
+- `library` must contain implementations for all tools in agent (or tool binding will fail)
+- If agent has tools, tool names must be unique within agent's tools list
 
 **Postconditions**:
 - Returns `Right AgentResponse` if execution succeeds
@@ -34,14 +34,14 @@ executeAgentWithLibrary
 - Conversation context updated with user message, tool calls, and agent response
 
 **Tool Binding Flow**:
-1. For each ToolSpecification in agent.agentToolSpecs:
-   - Lookup Tool in ToolLibrary by name
-   - Validate Tool matches ToolSpecification (name, description, schema)
-   - Bind ToolSpecification to Tool
+1. For each Tool in agent.agentTools:
+   - Lookup ToolImpl in ToolLibrary by name
+   - Validate ToolImpl matches Tool (name, description, schema)
+   - Bind Tool to ToolImpl
 2. If any tool binding fails, return ToolError
 
 **Tool Execution Flow**:
-1. Build LLM request with agent instructions, conversation context, and tool definitions (from ToolSpecifications)
+1. Build LLM request with agent instructions, conversation context, and tool definitions (from Tools)
 2. Send request to LLM API
 3. Parse response:
    - If `function_call` present: validate and invoke bound Tool, add tool result to context, loop back to step 2
@@ -56,16 +56,16 @@ executeAgentWithLibrary
 
 **Example**:
 ```haskell
--- Create agent with sayHello tool description
-let agent = Agent
-      { agentName = "hello_world_agent"
-      , agentModel = createModel "gpt-3.5-turbo" OpenAI
-      , agentInstruction = "Use sayHello tool to greet users"
-      , agentToolSpecs = [sayHelloSpec]
-      }
+-- Create agent with sayHello tool (Pattern)
+let agent = createAgent
+      "hello_world_agent"
+      Nothing
+      (createModel "gpt-3.5-turbo" OpenAI)
+      "Use sayHello tool to greet users"
+      [sayHello]
 
 -- Create tool library with sayHello implementation
-let library = registerTool "sayHello" sayHelloTool emptyToolLibrary
+let library = registerTool "sayHello" sayHelloImpl emptyToolLibrary
 
 -- Execute agent with tool library
 result <- executeAgentWithLibrary agent "Hello!" emptyContext library
@@ -101,24 +101,24 @@ Binds tool descriptions in an agent to tool implementations from a tool library.
 **Signature**:
 ```haskell
 bindAgentTools
-  :: Agent                -- agent: Agent with ToolSpecifications
+  :: Agent                -- agent: Agent with Tools
   -> ToolLibrary          -- library: Tool library
-  -> Either Text [Tool]   -- Bound tools or error message
+  -> Either Text [ToolImpl]   -- Bound tool implementations or error message
 ```
 
 **Preconditions**:
-- `agent` must have valid ToolSpecifications
-- `library` must contain implementations for all tool specifications
+- `agent` must have valid Tools
+- `library` must contain implementations for all tools
 
 **Postconditions**:
-- Returns `Right [Tool]` if all tools bound successfully
+- Returns `Right [ToolImpl]` if all tools bound successfully
 - Returns `Left error` if any tool binding fails
 
 **Binding Rules**:
-- For each ToolSpecification in agent.agentToolSpecs:
-  - Lookup Tool in ToolLibrary by toolSpecName
-  - Validate Tool matches ToolSpecification (name, description, schema must match)
-  - Add Tool to bound tools list
+- For each Tool in agent.agentTools:
+  - Lookup ToolImpl in ToolLibrary by tool name (pattern identifier)
+  - Validate ToolImpl matches Tool (name, description, schema must match)
+  - Add ToolImpl to bound tools list
 - If any tool not found or doesn't match, return Left error
 
 ## Tool Call Detection
@@ -149,15 +149,15 @@ Invokes a bound tool with validated parameters.
 **Signature**:
 ```haskell
 invokeTool
-  :: Tool                -- tool: Bound tool to invoke
+  :: ToolImpl            -- toolImpl: Bound tool implementation to invoke
   -> Value               -- args: Validated tool arguments
   -> IO (Either Text Value)
   -- Returns: Right result or Left error message
 ```
 
 **Preconditions**:
-- `args` must be validated against `tool.toolSchema`
-- `tool` must be valid (name, description, schema, invoke function)
+- `args` must be validated against `toolImpl.toolImplSchema`
+- `toolImpl` must be valid (name, description, schema, invoke function)
 
 **Postconditions**:
 - Returns `Right result` if tool execution succeeds
@@ -212,21 +212,21 @@ The execution loop continues until:
 **Scenario**: Test different tool implementations with the same agent specification.
 
 **Approach**:
-1. Create Agent with ToolSpecifications (same for both tests)
-2. Create ToolLibrary A with implementation A
-3. Create ToolLibrary B with implementation B (same tool name, different implementation)
+1. Create Agent with Tools (same for both tests)
+2. Create ToolLibrary A with ToolImpl A
+3. Create ToolLibrary B with ToolImpl B (same tool name, different implementation)
 4. Execute agent with ToolLibrary A → measure results
 5. Execute agent with ToolLibrary B → measure results
 6. Compare results
 
 **Example**:
 ```haskell
--- Same agent specification
-let agent = Agent { ..., agentToolSpecs = [sayHelloSpec] }
+-- Same agent specification (Pattern)
+let agent = createAgent "hello_agent" ... [sayHello]
 
 -- Different tool implementations
-let libraryA = registerTool "sayHello" sayHelloToolA emptyToolLibrary
-let libraryB = registerTool "sayHello" sayHelloToolB emptyToolLibrary
+let libraryA = registerTool "sayHello" sayHelloImplA emptyToolLibrary
+let libraryB = registerTool "sayHello" sayHelloImplB emptyToolLibrary
 
 -- A/B test
 resultA <- executeAgentWithLibrary agent input context libraryA

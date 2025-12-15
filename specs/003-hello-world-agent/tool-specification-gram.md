@@ -1,12 +1,12 @@
-# Tool Specification Gram Schema
+# Tool Gram Schema
 
 **Feature**: Hello World Agent with Tool Execution  
 **Date**: 2025-01-27  
-**Purpose**: Define the gram notation schema for tool specifications
+**Purpose**: Define the gram notation schema for tools
 
 ## Overview
 
-Tool specifications are represented in gram notation with the following structure:
+Tools are represented in gram notation with the following structure:
 - Tool name (unique identifier)
 - Tool description (natural language)
 - Type signature (gram path notation, curried form with parameter names as identifiers)
@@ -14,7 +14,7 @@ Tool specifications are represented in gram notation with the following structur
 ## Gram Schema Structure
 
 ```gram
-[<toolName>:ToolSpecification {
+[<toolName>:Tool {
   description: "<natural language description>"
 } |
   <curried function signature with parameter names as identifiers>
@@ -24,16 +24,16 @@ Tool specifications are represented in gram notation with the following structur
 **Key Points**:
 - Pattern identifier (`<toolName>`) is the unique tool name
 - Tool name must be globally unique (required for LLM tool calling)
-- Label `:ToolSpecification` indicates the type
+- Label `:Tool` indicates the type
 - Description stored in property record
 
 ## Example: sayHello Tool
 
 ```gram
-[sayHello:ToolSpecification {
+[sayHello:Tool {
   description: "Returns a friendly greeting message for the given name"
 } |
-  (personName::Text)==>(::String)
+  (personName::Text {default:"world"})==>(::String)
 ]
 ```
 
@@ -45,7 +45,7 @@ Tool specifications are represented in gram notation with the following structur
 - **Required**: Yes
 - **Description**: Unique identifier for the tool (stored as pattern identifier, not property)
 - **Constraints**: Must be globally unique (required for LLM tool calling), must be valid gram identifier
-- **Example**: `sayHello:ToolSpecification` - tool name is `sayHello`
+- **Example**: `sayHello:Tool` - tool name is `sayHello`
 
 ### `description`
 
@@ -89,8 +89,8 @@ Tool specifications are fully serializable in gram notation. The type signature 
 
 ## Notes
 
-- Tool specifications are declarative (no implementation)
+- Tools are declarative (no implementation)
 - Type signatures use gram notation (serializable)
 - JSON schemas are derived, not stored
-- Tool specifications can be shared across multiple agents
+- Tools can be shared across multiple agents
 

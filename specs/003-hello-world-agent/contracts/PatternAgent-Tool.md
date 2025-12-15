@@ -11,19 +11,19 @@
 - Late binding (implementations bound at execution time)
 - A/B testing (same agent specification with different tool implementations)
 
-## Tool Specification Creation
+## Tool Creation (Pattern)
 
-### `createToolSpecification`
+### `createTool`
 
-Creates a tool specification with gram type signature (serializable, no implementation).
+Creates a tool with gram type signature (Pattern Subject, serializable, no implementation).
 
 **Signature**:
 ```haskell
-createToolSpecification
+createTool
   :: Text              -- name: Unique tool name
   -> Text              -- description: Tool description
-  -> Text              -- typeSignature: Type signature in gram path notation (curried form, e.g., "(personName::Text)==>(::String)")
-  -> ToolSpecification
+  -> Text              -- typeSignature: Type signature in gram path notation (curried form, e.g., "(personName::Text {default:\"world\"})==>(::String)")
+  -> Tool
 ```
 
 **Preconditions**:
@@ -32,16 +32,16 @@ createToolSpecification
 - `typeSignature` must be valid gram notation type signature
 
 **Postconditions**:
-- Returns `ToolSpecification` ready for serialization and agent association
+- Returns `Tool` (Pattern Subject) ready for serialization and agent association
 - JSON schema is automatically generated from type signature
-- ToolSpecification can be added to agent's tool specification list
+- Tool can be added to agent's tools list
 
 **Example**:
 ```haskell
-let sayHelloSpec = createToolSpecification
+let sayHello = createTool
       "sayHello"
       "Returns a friendly greeting message for the given name"
-      -- Type signature in curried form: (personName::Text)==>(::String)
+      -- Type signature in curried form: (personName::Text {default:"world"})==>(::String)
       -- (Implementation may parse from text or gram path notation)
 ```
 
@@ -52,20 +52,20 @@ let sayHelloSpec = createToolSpecification
 - Optional parameter: `(personName::Text)==>(age::Int {default:18})==>(::String)`
 - Record parameter: `(userParams::Object {fields:[{name:"name", type:"Text"}, {name:"age", type:"Int"}]})==>(::String)`
 
-## Tool Implementation Creation
+## ToolImpl Implementation Creation
 
-### `createTool`
+### `createToolImpl`
 
-Creates a tool with executable implementation (not serializable).
+Creates a tool implementation with executable function (not serializable).
 
 **Signature**:
 ```haskell
-createTool
-  :: Text              -- name: Unique tool name (should match ToolSpecification name)
-  -> Text              -- description: Tool description (should match ToolSpecification)
-  -> Value             -- schema: JSON schema (should match ToolSpecification schema)
+createToolImpl
+  :: Text              -- name: Unique tool name (should match Tool name)
+  -> Text              -- description: Tool description (should match Tool)
+  -> Value             -- schema: JSON schema (should match Tool schema)
   -> (Value -> IO Value)  -- invoke: Tool invocation function
-  -> Tool
+  -> ToolImpl
 ```
 
 **Preconditions**:
@@ -75,73 +75,30 @@ createTool
 - `invoke` function must handle JSON parameter conversion and errors
 
 **Postconditions**:
-- Returns `Tool` ready for ToolLibrary registration
-- Tool can be registered in ToolLibrary for late binding
+- Returns `ToolImpl` ready for ToolLibrary registration
+- ToolImpl can be registered in ToolLibrary for late binding
 
 **Example**:
 ```haskell
-let sayHelloTool = createTool
+let sayHelloImpl = createToolImpl
       "sayHello"
       "Returns a friendly greeting message for the given name"
-      (object [ "type" .= ("object" :: Text)
-              , "properties" .= object [ "name" .= object [ "type" .= ("string" :: Text) ] ]
-              , "required" .= ["name"]
-              ])
+      (typeSignatureToJSONSchema "(personName::Text {default:\"world\"})==>(::String)")
       (\args -> do
-        let name = args ^. key "name" . _String
+        let name = fromMaybe "world" $ args ^? key "personName" . _String
         return $ String $ "Hello, " <> name <> "! Nice to meet you."
       )
 ```
 
-## Tool Specification Accessors
-
-### `toolSpecName`
-
-Returns the tool specification's name.
-
-**Signature**:
-```haskell
-toolSpecName :: ToolSpecification -> Text
-```
-
-### `toolSpecDescription`
-
-Returns the tool specification's description.
-
-**Signature**:
-```haskell
-toolSpecDescription :: ToolSpecification -> Text
-```
-
-### `toolSpecTypeSignature`
-
-Returns the tool specification's type signature in gram notation.
-
-**Signature**:
-```haskell
-toolSpecTypeSignature :: ToolSpecification -> Text
-```
-
-### `toolSpecSchema`
-
-Returns the tool specification's auto-generated JSON schema.
-
-**Signature**:
-```haskell
-toolSpecSchema :: ToolSpecification -> Value
-```
-
-**Note**: Schema is automatically generated from type signature, not manually specified.
-
-## Tool Accessors
+## Tool Accessors (Lens-based for Pattern)
 
 ### `toolName`
 
-Returns the tool's name.
+Returns the tool's name (pattern identifier).
 
 **Signature**:
 ```haskell
-toolName :: Tool -> Text
+toolName :: Lens' Tool Text
 ```
 
 ### `toolDescription`
@@ -150,16 +107,54 @@ Returns the tool's description.
 
 **Signature**:
 ```haskell
-toolDescription :: Tool -> Text
+toolDescription :: Lens' Tool Text
+```
+
+### `toolTypeSignature`
+
+Returns the tool's type signature in gram notation.
+
+**Signature**:
+```haskell
+toolTypeSignature :: Lens' Tool Text
 ```
 
 ### `toolSchema`
 
-Returns the tool's parameter schema.
+Returns the tool's auto-generated JSON schema.
 
 **Signature**:
 ```haskell
-toolSchema :: Tool -> Value
+toolSchema :: Lens' Tool Value
+```
+
+## ToolImpl Accessors
+
+### `toolImplName`
+
+Returns the tool implementation's name.
+
+**Signature**:
+```haskell
+toolImplName :: ToolImpl -> Text
+```
+
+### `toolImplDescription`
+
+Returns the tool implementation's description.
+
+**Signature**:
+```haskell
+toolImplDescription :: ToolImpl -> Text
+```
+
+### `toolImplSchema`
+
+Returns the tool implementation's parameter schema.
+
+**Signature**:
+```haskell
+toolImplSchema :: ToolImpl -> Value
 ```
 
 ## Tool Library Management
@@ -181,23 +176,23 @@ Registers a tool implementation in the tool library.
 ```haskell
 registerTool
   :: Text              -- name: Tool name
-  -> Tool              -- tool: Tool implementation
-  -> ToolLibrary       -- library: Tool library to register in
-  -> ToolLibrary       -- Updated tool library
+  -> ToolImpl         -- toolImpl: Tool implementation
+  -> ToolLibrary      -- library: Tool library to register in
+  -> ToolLibrary      -- Updated tool library
 ```
 
 **Preconditions**:
-- `name` must match `tool.toolName`
-- `tool` must be valid (name, description, schema, invoke function)
+- `name` must match `toolImpl.toolImplName`
+- `toolImpl` must be valid (name, description, schema, invoke function)
 
 **Postconditions**:
 - Returns ToolLibrary with tool registered
-- Tool can be looked up by name
+- ToolImpl can be looked up by name
 - If tool with same name already exists, it is replaced
 
 **Example**:
 ```haskell
-let library = registerTool "sayHello" sayHelloTool emptyToolLibrary
+let library = registerTool "sayHello" sayHelloImpl emptyToolLibrary
 ```
 
 ### `lookupTool`
@@ -209,37 +204,37 @@ Looks up a tool implementation by name.
 lookupTool
   :: Text              -- name: Tool name
   -> ToolLibrary       -- library: Tool library to search
-  -> Maybe Tool        -- Tool implementation if found
+  -> Maybe ToolImpl    -- Tool implementation if found
 ```
 
 **Preconditions**:
 - `name` must be non-empty
 
 **Postconditions**:
-- Returns `Just tool` if tool found
+- Returns `Just toolImpl` if tool found
 - Returns `Nothing` if tool not found
 
 ### `bindTool`
 
-Binds a tool specification to a tool implementation from the library.
+Binds a Tool (Pattern) to a ToolImpl implementation from the library.
 
 **Signature**:
 ```haskell
 bindTool
-  :: ToolSpecification   -- spec: Tool specification
-  -> ToolLibrary        -- library: Tool library to search
-  -> Maybe Tool         -- Bound tool implementation if found and matches
+  :: Tool              -- tool: Tool (Pattern)
+  -> ToolLibrary       -- library: Tool library to search
+  -> Maybe ToolImpl    -- Bound tool implementation if found and matches
 ```
 
 **Preconditions**:
-- `spec` must be valid ToolSpecification
+- `tool` must be valid Tool (Pattern)
 - `library` must be valid ToolLibrary
 
 **Postconditions**:
-- Returns `Just tool` if tool found and matches specification (name, description, schema)
+- Returns `Just toolImpl` if tool found and matches Tool (name, description, schema)
 - Returns `Nothing` if tool not found or doesn't match
 
-**Validation**: Validates that tool implementation matches specification (name, description, schema must match)
+**Validation**: Validates that ToolImpl matches Tool (name, description, schema must match)
 
 ## Tool Invocation
 
@@ -249,11 +244,11 @@ Tool invocation is handled internally by the agent execution system. Tools are i
 - Tool descriptions and schemas
 
 **Invocation Flow**:
-1. Agent execution receives Agent (with ToolSpecifications) and ToolLibrary
-2. Tool binding: ToolSpecifications bound to Tool implementations from ToolLibrary
+1. Agent execution receives Agent (with Tools) and ToolLibrary
+2. Tool binding: Tools bound to ToolImpl implementations from ToolLibrary
 3. LLM selects tool and provides parameters as JSON
 4. Parameters validated against tool schema
-5. `toolInvoke` function called with validated parameters
+5. `toolImplInvoke` function called with validated parameters
 6. Result (or error) returned to LLM
 7. LLM incorporates result into response
 
@@ -363,56 +358,57 @@ validateToolArgs :: Value -> Value -> Either Text Value
 
 ## Serialization
 
-### ToolSpecification Serialization
+### Tool Serialization (Pattern)
 
-ToolSpecification is fully serializable (ToJSON, FromJSON instances).
+Tool (Pattern Subject) is fully serializable in gram notation.
 
 **Serialization Format** (gram notation):
 ```gram
-[sayHello:ToolSpecification {
+[sayHello:Tool {
   description: "Returns a friendly greeting message for the given name"
 } |
-  (personName::Text)==>(::String)
+  (personName::Text {default:"world"})==>(::String)
 ]
 ```
 
-**Note**: Tool name is stored as the pattern identifier (`sayHello:ToolSpecification`), ensuring global uniqueness required for LLM tool calling. Parameter name `personName` is also a globally unique identifier, encouraging consistent vocabulary.
+**Note**: Tool name is stored as the pattern identifier (`sayHello:Tool`), ensuring global uniqueness required for LLM tool calling. Parameter name `personName` is also a globally unique identifier, encouraging consistent vocabulary.
 
-**Note**: JSON schema is generated from type signature during deserialization, not stored.
+**Note**: JSON schema is generated from type signature during deserialization or when accessed via lens, not stored.
 
 **JSON Format** (for API compatibility):
 ```json
 {
   "name": "sayHello",
   "description": "Returns a friendly greeting message for the given name",
-  "typeSignature": "(personName::Text)==>(::String)",
+  "typeSignature": "(personName::Text {default:\"world\"})==>(::String)",
   "schema": {
     "type": "object",
     "properties": {
       "personName": {
-        "type": "string"
+        "type": "string",
+        "default": "world"
       }
     },
-    "required": ["personName"]
+    "required": []
   }
 }
 ```
 
 **Note**: The `schema` field is auto-generated from `typeSignature` (curried form gram path notation) and included for convenience, but `typeSignature` is the source of truth.
 
-### Tool Serialization
+### ToolImpl Serialization
 
-Tool is NOT serializable (contains function closure). Tool implementations are registered in ToolLibrary at runtime, not serialized.
+ToolImpl is NOT serializable (contains function closure). ToolImpl implementations are registered in ToolLibrary at runtime, not serialized.
 
 ## Notes
 
-- ToolSpecification creation is pure (no side effects)
-- Tool creation is pure (no side effects, but contains function closure)
+- Tool creation is pure (no side effects)
+- ToolImpl creation is pure (no side effects, but contains function closure)
 - ToolLibrary registration is pure (returns new ToolLibrary)
 - Tool invocation uses `IO` for side effects (tools may perform I/O)
 - Schema validation occurs before tool invocation
 - Tool errors are caught and returned to LLM as error messages
-- Tool specifications can be shared across multiple agents
-- Tool names must be unique within an agent's tool specification list
+- Tools can be shared across multiple agents
+- Tool names must be unique within an agent's tools list
 - Tool names must be unique within a ToolLibrary
 - Tool binding happens at execution time, enabling A/B testing

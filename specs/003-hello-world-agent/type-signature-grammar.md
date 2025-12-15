@@ -313,12 +313,12 @@ Parser should return clear error messages for:
 **Example**:
 ```gram
 // Function 1
-[sayHello:ToolSpecification |
+[sayHello:Tool |
   (personName::Text)==>(::String)
 ]
 
 // Function 2 - Uses descriptive name to avoid conflict
-[greet:ToolSpecification |
+[greet:Tool |
   (userName::Text)==>(::String)
 ]
 ```

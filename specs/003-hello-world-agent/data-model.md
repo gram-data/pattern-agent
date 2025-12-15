@@ -13,11 +13,11 @@
 - Tool library pattern (registry of implementations)
 
 **Flow**:
-1. **Gram Notation** → Agent with `ToolSpecification` (name, description, schema) - serializable
-2. **Deserialization** → Agent with `ToolSpecification` list
+1. **Gram Notation** → Agent with `Tool` (name, description, schema) - serializable
+2. **Deserialization** → Agent with `Tool` list
 3. **Execution Environment** → Tool library/registry maps tool names to implementations
-4. **Tool Binding** → At execution time, match `ToolSpecification` to `Tool` implementation from registry
-5. **Execution** → Use bound `Tool` implementations to invoke tools
+4. **Tool Binding** → At execution time, match `Tool` to `ToolImpl` implementation from registry
+5. **Execution** → Use bound `ToolImpl` implementations to invoke tools
 
 ## Architecture: Pattern Subject as Canonical Format
 
@@ -28,7 +28,7 @@
 ### Design Principles
 
 1. **Pattern as Source Code**: Pattern Subject is a declarative programming language for agent workflows - it's the source code, canonical and versionable
-2. **Pattern Subject for Specifications**: All serializable, declarative types (Agent, ToolSpecification) are represented as `Pattern Subject`
+2. **Pattern Subject for Specifications**: All serializable, declarative types (Agent, Tool) are represented as `Pattern Subject`
 3. **Lenses for Type Safety**: Type-safe accessors (lenses) provide compile-time guarantees about structure
 4. **Execution Models**: Support both interpretation (direct Pattern execution) and compilation (Pattern → Agent optimization)
 5. **Runtime Types**: Execution/runtime types (Tool, ToolLibrary, ConversationContext) remain as concrete Haskell types
@@ -36,19 +36,23 @@
 
 ### Type Classification
 
-**Pattern Subject Types** (source code / workflow language):
+**Pattern Types** (primary/canonical - simple names):
 - `Agent` - Agent workflow specification (program in Pattern language)
-- `ToolSpecification` - Tool interface specification (part of workflow)
+- `Tool` - Tool interface specification (part of workflow)
 - `Model` - Simple string representation (`"OpenAI/gpt-3.5-turbo"`)
+
+**Runtime Types** (optional optimization - longer names):
+- `AgentRuntime` - Optimized runtime representation (optional compilation target)
+- `ToolRuntime` - Optimized runtime representation (optional compilation target)
+
+**Runtime-Only Types** (no Pattern equivalent - simple names):
+- `ToolImpl` - Tool implementation (contains function closure, not part of language)
+- `ToolLibrary` - Runtime registry mapping tool names to implementations
+- `ConversationContext` - Runtime conversation state
 - `AgentResponse` - Execution result (can be serialized for logging/debugging)
 - `ToolInvocation` - Tool call record (can be serialized)
 
-**Concrete Types** (runtime/execution environment):
-- `Tool` - Tool implementation (contains function closure, not part of language)
-- `ToolLibrary` - Runtime registry mapping tool names to implementations
-- `ConversationContext` - Runtime conversation state
-
-**Note**: Pattern Subject is the canonical form (like source code). Concrete types are optional compilation targets for performance optimization, but not required if using direct interpretation.
+**Note**: Pattern types (`Agent`, `Tool`) are the canonical form (like source code) and what developers use most often. Runtime types (`AgentRuntime`, `ToolRuntime`) are optional compilation targets for performance optimization, but not required if using direct interpretation.
 
 ### Pattern Structure
 
@@ -59,12 +63,12 @@
   instruction: "Agent instructions...",
   model: "OpenAI/gpt-3.5-turbo"
 } |
-  [sayHello:ToolSpecification {
+  [sayHello:Tool {
     description: "Returns a friendly greeting"
   } |
     (personName::Text {default:"world"})==>(::String)
   ],
-  [anotherTool:ToolSpecification {...}]
+  [anotherTool:Tool {...}]
 ]
 ```
 
@@ -79,22 +83,22 @@
 Instead of concrete data types, use lenses for type-safe access:
 
 ```haskell
--- Type aliases for clarity
-type AgentPattern = Pattern Subject
-type ToolSpecPattern = Pattern Subject
+-- Simple names for primary Pattern types
+type Agent = Pattern Subject
+type Tool = Pattern Subject
 
 -- Lenses for Agent access
-agentName :: Lens' AgentPattern Text
-agentDescription :: Lens' AgentPattern (Maybe Text)
-agentModel :: Lens' AgentPattern Model
-agentInstruction :: Lens' AgentPattern Text
-agentToolSpecs :: Lens' AgentPattern [ToolSpecPattern]  -- elements are nested patterns
+agentName :: Lens' Agent Text
+agentDescription :: Lens' Agent (Maybe Text)
+agentModel :: Lens' Agent Model
+agentInstruction :: Lens' Agent Text
+agentTools :: Lens' Agent [Tool]  -- elements are nested patterns
 
--- Lenses for ToolSpecification access
-toolSpecName :: Lens' ToolSpecPattern Text
-toolSpecDescription :: Lens' ToolSpecPattern Text
-toolSpecTypeSignature :: Lens' ToolSpecPattern Text
-toolSpecSchema :: Lens' ToolSpecPattern Value  -- Auto-generated from type signature
+-- Lenses for Tool access
+toolName :: Lens' Tool Text
+toolDescription :: Lens' Tool Text
+toolTypeSignature :: Lens' Tool Text
+toolSchema :: Lens' Tool Value  -- Auto-generated from type signature
 ```
 
 ### Benefits
@@ -114,7 +118,7 @@ toolSpecSchema :: Lens' ToolSpecPattern Value  -- Auto-generated from type signa
 import Control.Lens
 
 -- Example: agentName lens (extracts from pattern identifier)
-agentName :: Lens' (Pattern Subject) Text
+agentName :: Lens' Agent Text
 agentName = lens getter setter
   where
     getter p = T.pack $ symbolToString $ identity $ value p
@@ -125,8 +129,8 @@ agentName = lens getter setter
       }
 
 -- Validation: ensure Pattern has "Agent" label
-validateAgentPattern :: Pattern Subject -> Either Text (Pattern Subject)
-validateAgentPattern p
+validateAgent :: Agent -> Either Text Agent
+validateAgent p
   | "Agent" `elem` labels (value p) = Right p
   | otherwise = Left "Pattern does not have Agent label"
 ```
@@ -134,14 +138,14 @@ validateAgentPattern p
 **Construction**:
 ```haskell
 -- Create Agent from Pattern
-createAgentPattern 
+createAgent
   :: Text           -- name (becomes pattern identifier)
   -> Maybe Text     -- description
   -> Model          -- model
   -> Text           -- instruction
-  -> [ToolSpecPattern]  -- tool specs
-  -> AgentPattern
-createAgentPattern name desc model instruction toolSpecs =
+  -> [Tool]         -- tool specs
+  -> Agent
+createAgent name desc model instruction tools =
   Pattern
     { value = Subject
         { identity = Symbol (T.unpack name)  -- Name is the pattern identifier
@@ -151,48 +155,48 @@ createAgentPattern name desc model instruction toolSpecs =
             , ("model", VString $ T.unpack $ modelToString model)
             ] ++ maybe [] (\d -> [("description", VString $ T.unpack d)]) desc
         }
-    , elements = toolSpecs
+    , elements = tools
     }
 ```
 
 **Access**:
 ```haskell
 -- Type-safe access using lenses
-getAgentName :: AgentPattern -> Text
+getAgentName :: Agent -> Text
 getAgentName = view agentName
 
-setAgentName :: Text -> AgentPattern -> AgentPattern
+setAgentName :: Text -> Agent -> Agent
 setAgentName = set agentName
 
--- Access tool specifications
-getToolSpecs :: AgentPattern -> [ToolSpecPattern]
-getToolSpecs = view agentToolSpecs
+-- Access tools
+getTools :: Agent -> [Tool]
+getTools = view agentTools
 ```
 
 ### Conversion Between Representations
 
 **Pattern → Concrete (for execution)**:
 ```haskell
--- Convert Pattern to concrete Agent type for execution
-patternToAgent :: AgentPattern -> Either Text Agent
-patternToAgent p = do
+-- Convert Pattern to AgentRuntime for optimized execution (optional)
+compileAgent :: Agent -> Either Text AgentRuntime
+compileAgent p = do
   name <- maybeToEither "Missing name" $ view agentName p
   instruction <- maybeToEither "Missing instruction" $ view agentInstruction p
   model <- parseModel =<< view agentModel p
-  toolSpecs <- traverse patternToToolSpec $ view agentToolSpecs p
-  return $ Agent name (view agentDescription p) model instruction toolSpecs
+  tools <- traverse compileTool $ view agentTools p
+  return $ AgentRuntime name (view agentDescription p) model instruction tools
 ```
 
 **Concrete → Pattern (for serialization)**:
 ```haskell
--- Convert concrete Agent to Pattern (already in gram format)
-agentToPattern :: Agent -> AgentPattern
-agentToPattern agent = createAgentPattern
-  (agentName agent)
-  (agentDescription agent)
-  (agentModel agent)
-  (agentInstruction agent)
-  (map toolSpecToPattern $ agentToolSpecs agent)
+-- Convert AgentRuntime back to Pattern (for serialization)
+agentRuntimeToPattern :: AgentRuntime -> Agent
+agentRuntimeToPattern agent = createAgent
+  (agentRuntimeName agent)
+  (agentRuntimeDescription agent)
+  (agentRuntimeModel agent)
+  (agentRuntimeInstruction agent)
+  (map toolRuntimeToPattern $ agentRuntimeTools agent)
 ```
 
 ### Schema Validation
@@ -201,8 +205,8 @@ Lenses can validate Pattern structure:
 
 ```haskell
 -- Validate Agent pattern structure
-validateAgentPattern :: AgentPattern -> Either Text AgentPattern
-validateAgentPattern p = do
+validateAgent :: Agent -> Either Text Agent
+validateAgent p = do
   -- Check required label
   unless ("Agent" `elem` labels (value p)) $
     Left "Pattern must have Agent label"
@@ -219,10 +223,10 @@ validateAgentPattern p = do
   unless (hasProperty "model" props) $
     Left "Agent must have 'model' property"
   
-  -- Validate nested tool specifications
-  forM_ (elements p) $ \toolSpec -> do
-    unless ("ToolSpecification" `elem` labels (value toolSpec)) $
-      Left "Tool specification must have ToolSpecification label"
+  -- Validate nested tools
+  forM_ (elements p) $ \tool -> do
+    unless ("Tool" `elem` labels (value tool)) $
+      Left "Tool must have Tool label"
   
   return p
 ```
@@ -264,7 +268,7 @@ validateAgentPattern p = do
 
 ## Entities
 
-### ToolSpecification
+### Tool
 
 Represents a tool's declarative specification (serializable, no implementation).
 
@@ -272,7 +276,7 @@ Represents a tool's declarative specification (serializable, no implementation).
 
 **Pattern Structure**:
 ```gram
-[toolName:ToolSpecification {
+[toolName:Tool {
   description: "Tool description"
 } |
   (paramName::Type {default:value})==>(::ReturnType)
@@ -280,95 +284,96 @@ Represents a tool's declarative specification (serializable, no implementation).
 ```
 
 **Fields** (accessed via lenses):
-- `toolSpecName :: Text` - Unique name for the tool (pattern identifier, required)
-- `toolSpecDescription :: Text` - Natural language description (property, required)
-- `toolSpecTypeSignature :: Text` - Type signature in gram path notation (pattern element, required)
-- `toolSpecSchema :: Value` - JSON schema (auto-generated from type signature, computed on access)
+- `toolName :: Text` - Unique name for the tool (pattern identifier, required)
+- `toolDescription :: Text` - Natural language description (property, required)
+- `toolTypeSignature :: Text` - Type signature in gram path notation (pattern element, required)
+- `toolSchema :: Value` - JSON schema (auto-generated from type signature, computed on access)
 
 **Validation Rules**:
-- Pattern must have `ToolSpecification` label
+- Pattern must have `Tool` label
 - Pattern identifier is the tool name (must be non-empty, globally unique)
 - `description` property must be non-empty
 - Pattern must have exactly one element (the type signature path)
 - Type signature must be valid gram path notation
-- `toolSpecSchema` is automatically generated from `toolSpecTypeSignature` using `typeSignatureToJSONSchema`
+- `toolSchema` is automatically generated from `toolTypeSignature` using `typeSignatureToJSONSchema`
 
 **Relationships**:
-- ToolSpecification belongs to zero or more Agents (specifications can be shared as nested patterns)
-- ToolSpecification is bound to Tool implementation at execution time
+- Tool belongs to zero or more Agents (tools can be shared as nested patterns)
+- Tool is bound to ToolImpl implementation at execution time
 
-**Type Definition** (Pattern Subject with lenses):
+**Type Definition** (Pattern Subject with lenses - primary/canonical):
 ```haskell
-type ToolSpecPattern = Pattern Subject
+-- Simple name for primary representation
+type Tool = Pattern Subject
 
 -- Lenses for type-safe access
-toolSpecName :: Lens' ToolSpecPattern Text
-toolSpecDescription :: Lens' ToolSpecPattern Text
-toolSpecTypeSignature :: Lens' ToolSpecPattern Text
-toolSpecSchema :: Lens' ToolSpecPattern Value  -- Computed from type signature
+toolName :: Lens' Tool Text
+toolDescription :: Lens' Tool Text
+toolTypeSignature :: Lens' Tool Text
+toolSchema :: Lens' Tool Value  -- Computed from type signature
 ```
 
-**Concrete Type** (for execution/conversion):
+**Runtime Type** (optional optimization for execution):
 ```haskell
-data ToolSpecification = ToolSpecification
-  { toolSpecName :: Text
-  , toolSpecDescription :: Text
-  , toolSpecTypeSignature :: Text
-  , toolSpecSchema :: Value
+data ToolRuntime = ToolRuntime
+  { toolRuntimeName :: Text
+  , toolRuntimeDescription :: Text
+  , toolRuntimeTypeSignature :: Text
+  , toolRuntimeSchema :: Value
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 ```
 
 **Accessors** (lens-based):
-- `toolSpecName :: Lens' ToolSpecPattern Text` - Access tool name (pattern identifier)
-- `toolSpecDescription :: Lens' ToolSpecPattern Text` - Access description (property)
-- `toolSpecTypeSignature :: Lens' ToolSpecPattern Text` - Access type signature (pattern element)
-- `toolSpecSchema :: Lens' ToolSpecPattern Value` - Access auto-generated schema (computed)
+- `toolName :: Lens' Tool Text` - Access tool name (pattern identifier)
+- `toolDescription :: Lens' Tool Text` - Access description (property)
+- `toolTypeSignature :: Lens' Tool Text` - Access type signature (pattern element)
+- `toolSchema :: Lens' Tool Value` - Access auto-generated schema (computed)
 
 **Schema Generation**: JSON schema is automatically generated from gram type signature using `typeSignatureToJSONSchema` function. The schema is computed when accessed via lens, not stored separately.
 
 **Serialization**: Already in gram format (Pattern Subject), no conversion needed. Can be serialized directly to gram notation.
 
-### Tool
+### ToolImpl
 
 Represents a tool with its executable implementation (bound at runtime, not serializable).
 
 **Representation**: Concrete Haskell type (not Pattern Subject) because it contains function closures that cannot be serialized.
 
-**Rationale**: Tool contains `toolInvoke :: Value -> IO Value`, which is a function closure and cannot be represented in gram notation. ToolSpecification (Pattern Subject) describes the tool interface, while Tool (concrete type) provides the implementation.
+**Rationale**: ToolImpl contains `toolImplInvoke :: Value -> IO Value`, which is a function closure and cannot be represented in gram notation. Tool (Pattern Subject) describes the tool interface, while ToolImpl (concrete type) provides the implementation.
 
 **Fields**:
-- `toolName :: Text` - Unique name for the tool (required, must match ToolSpecification name)
-- `toolDescription :: Text` - Natural language description (required, matches ToolSpecification)
-- `toolSchema :: Value` - JSON schema (required, matches ToolSpecification schema)
-- `toolInvoke :: Value -> IO Value` - Function that invokes the tool with JSON parameters and returns JSON result (required)
+- `toolImplName :: Text` - Unique name for the tool (required, must match Tool name)
+- `toolImplDescription :: Text` - Natural language description (required, matches Tool)
+- `toolImplSchema :: Value` - JSON schema (required, matches Tool schema)
+- `toolImplInvoke :: Value -> IO Value` - Function that invokes the tool with JSON parameters and returns JSON result (required)
 
 **Validation Rules**:
-- `toolName` must match a ToolSpecification name when bound
-- `toolDescription` and `toolSchema` should match ToolSpecification (validated at binding time)
-- `toolInvoke` function must handle JSON parameter conversion and error cases
+- `toolImplName` must match a Tool name when bound
+- `toolImplDescription` and `toolImplSchema` should match Tool (validated at binding time)
+- `toolImplInvoke` function must handle JSON parameter conversion and error cases
 
 **Relationships**:
-- Tool is bound from ToolSpecification at execution time via ToolLibrary
-- Tool invocation produces ToolInvocation record
+- ToolImpl is bound from Tool at execution time via ToolLibrary
+- ToolImpl invocation produces ToolInvocation record
 
 **Type Definition**:
 ```haskell
-data Tool = Tool
-  { toolName :: Text
-  , toolDescription :: Text
-  , toolSchema :: Value  -- Aeson Value for JSON schema
-  , toolInvoke :: Value -> IO Value  -- JSON in, JSON out
+data ToolImpl = ToolImpl
+  { toolImplName :: Text
+  , toolImplDescription :: Text
+  , toolImplSchema :: Value  -- Aeson Value for JSON schema
+  , toolImplInvoke :: Value -> IO Value  -- JSON in, JSON out
   }
   deriving (Generic)  -- Note: Cannot derive Eq/Show/ToJSON/FromJSON due to function field
 ```
 
 **Accessors**:
-- `toolName :: Tool -> Text` - Returns tool name
-- `toolDescription :: Tool -> Text` - Returns tool description
-- `toolSchema :: Tool -> Value` - Returns tool parameter schema
+- `toolImplName :: ToolImpl -> Text` - Returns tool name
+- `toolImplDescription :: ToolImpl -> Text` - Returns tool description
+- `toolImplSchema :: ToolImpl -> Value` - Returns tool parameter schema
 
-**Binding**: Created from ToolSpecification + ToolLibrary lookup at execution time
+**Binding**: Created from Tool + ToolLibrary lookup at execution time
 
 ### ToolLibrary
 
@@ -377,36 +382,36 @@ Registry that maps tool names to executable implementations.
 **Purpose**: Enables late binding of tool descriptions to implementations, supporting A/B testing and different execution environments.
 
 **Fields**:
-- `libraryTools :: Map Text Tool` - Map from tool name to Tool implementation
+- `libraryTools :: Map Text ToolImpl` - Map from tool name to ToolImpl implementation
 
 **Operations**:
-- `registerTool :: Text -> Tool -> ToolLibrary -> ToolLibrary` - Register a tool implementation
-- `lookupTool :: Text -> ToolLibrary -> Maybe Tool` - Lookup tool by name
-- `bindTool :: ToolSpecification -> ToolLibrary -> Maybe Tool` - Bind specification to implementation
+- `registerTool :: Text -> ToolImpl -> ToolLibrary -> ToolLibrary` - Register a tool implementation
+- `lookupTool :: Text -> ToolLibrary -> Maybe ToolImpl` - Lookup tool by name
+- `bindTool :: Tool -> ToolLibrary -> Maybe ToolImpl` - Bind Tool (Pattern) to ToolImpl implementation
 
 **Type Definition**:
 ```haskell
 data ToolLibrary = ToolLibrary
-  { libraryTools :: Map Text Tool
+  { libraryTools :: Map Text ToolImpl
   }
   deriving (Generic)
 
 emptyToolLibrary :: ToolLibrary
 emptyToolLibrary = ToolLibrary Map.empty
 
-registerTool :: Text -> Tool -> ToolLibrary -> ToolLibrary
-registerTool name tool (ToolLibrary tools) = ToolLibrary $ Map.insert name tool tools
+registerTool :: Text -> ToolImpl -> ToolLibrary -> ToolLibrary
+registerTool name toolImpl (ToolLibrary tools) = ToolLibrary $ Map.insert name toolImpl tools
 
-lookupTool :: Text -> ToolLibrary -> Maybe Tool
+lookupTool :: Text -> ToolLibrary -> Maybe ToolImpl
 lookupTool name (ToolLibrary tools) = Map.lookup name tools
 
-bindTool :: ToolSpecification -> ToolLibrary -> Maybe Tool
-bindTool spec library = do
-  tool <- lookupTool (toolSpecName spec) library
-  -- Validate that tool matches specification (optional, for safety)
-  guard $ toolDescription tool == toolSpecDescription spec
-  guard $ toolSchema tool == toolSpecSchema spec
-  return tool
+bindTool :: Tool -> ToolLibrary -> Maybe ToolImpl
+bindTool toolPattern library = do
+  toolImpl <- lookupTool (view toolName toolPattern) library
+  -- Validate that tool implementation matches specification (optional, for safety)
+  guard $ toolImplDescription toolImpl == view toolDescription toolPattern
+  guard $ toolImplSchema toolImpl == view toolSchema toolPattern
+  return toolImpl
 ```
 
 **A/B Testing Support**: Different ToolLibrary instances can provide different implementations for the same tool name, enabling A/B testing of tool implementations while keeping the same agent specification.
@@ -424,8 +429,8 @@ Represents an LLM-powered agent with identity, model, instructions, and tool des
   instruction: "Agent instructions...",
   model: "OpenAI/gpt-3.5-turbo"
 } |
-  [toolSpec1:ToolSpecification {...}],
-  [toolSpec2:ToolSpecification {...}]
+  [tool1:Tool {...}],
+  [tool2:Tool {...}]
 ]
 ```
 
@@ -434,55 +439,56 @@ Represents an LLM-powered agent with identity, model, instructions, and tool des
 - `agentDescription :: Maybe Text` - Optional agent description (property)
 - `agentModel :: Model` - LLM model to use (property, required)
 - `agentInstruction :: Text` - Agent behavior instructions (property, required)
-- `agentToolSpecs :: [ToolSpecPattern]` - List of tool specifications (pattern elements, optional, defaults to empty list)
+- `agentTools :: [Tool]` - List of tools (pattern elements, optional, defaults to empty list)
 
 **Validation Rules**:
 - Pattern must have `Agent` label
 - Pattern identifier is the agent name (must be non-empty)
-- `name`, `instruction`, and `model` properties must be present
-- `agentToolSpecs` can be empty (tool-free agents supported)
-- Tool names must be unique within `agentToolSpecs` list (pattern identifiers)
+- `instruction` and `model` properties must be present
+- `agentTools` can be empty (tool-free agents supported)
+- Tool names must be unique within `agentTools` list (pattern identifiers)
 
 **Relationships**:
-- Agent has zero or more ToolSpecifications (as nested pattern elements)
+- Agent has zero or more Tools (as nested pattern elements)
 - Agent produces AgentResponse during execution
 - Agent maintains ConversationContext
-- Agent's tool specifications are bound to Tool implementations at execution time via ToolLibrary
+- Agent's tools are bound to ToolImpl implementations at execution time via ToolLibrary
 
-**Type Definition** (Pattern Subject with lenses):
+**Type Definition** (Pattern Subject with lenses - primary/canonical):
 ```haskell
-type AgentPattern = Pattern Subject
+-- Simple name for primary representation
+type Agent = Pattern Subject
 
 -- Lenses for type-safe access
-agentName :: Lens' AgentPattern Text
-agentDescription :: Lens' AgentPattern (Maybe Text)
-agentModel :: Lens' AgentPattern Model
-agentInstruction :: Lens' AgentPattern Text
-agentToolSpecs :: Lens' AgentPattern [ToolSpecPattern]  -- elements are nested patterns
+agentName :: Lens' Agent Text
+agentDescription :: Lens' Agent (Maybe Text)
+agentModel :: Lens' Agent Model
+agentInstruction :: Lens' Agent Text
+agentTools :: Lens' Agent [Tool]  -- elements are nested patterns
 ```
 
-**Concrete Type** (for execution/conversion):
+**Runtime Type** (optional optimization for execution):
 ```haskell
-data Agent = Agent
-  { agentName :: Text
-  , agentDescription :: Maybe Text
-  , agentModel :: Model
-  , agentInstruction :: Text
-  , agentToolSpecs :: [ToolSpecification]  -- Tool specifications (serializable)
+data AgentRuntime = AgentRuntime
+  { agentRuntimeName :: Text
+  , agentRuntimeDescription :: Maybe Text
+  , agentRuntimeModel :: Model
+  , agentRuntimeInstruction :: Text
+  , agentRuntimeTools :: [ToolRuntime]  -- Runtime tools
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 ```
 
-**Accessors** (lens-based):
-- `agentName :: Lens' AgentPattern Text` - Access agent name (pattern identifier)
-- `agentDescription :: Lens' AgentPattern (Maybe Text)` - Access description (property)
-- `agentModel :: Lens' AgentPattern Model` - Access model (property)
-- `agentInstruction :: Lens' AgentPattern Text` - Access instruction (property)
-- `agentToolSpecs :: Lens' AgentPattern [ToolSpecPattern]` - Access tool specs (pattern elements)
+**Accessors** (lens-based for Pattern):
+- `agentName :: Lens' Agent Text` - Access agent name (pattern identifier)
+- `agentDescription :: Lens' Agent (Maybe Text)` - Access description (property)
+- `agentModel :: Lens' Agent Model` - Access model (property)
+- `agentInstruction :: Lens' Agent Text` - Access instruction (property)
+- `agentTools :: Lens' Agent [Tool]` - Access tools (pattern elements)
 
 **Serialization**: Already in gram format (Pattern Subject), no conversion needed. Can be serialized directly to gram notation.
 
-**Execution**: Pattern can be converted to concrete `Agent` type for execution, or execution can work directly with Pattern. Tool specifications are bound to implementations at execution time via ToolLibrary parameter to executeAgent.
+**Execution**: Pattern `Agent` can be executed directly (interpretation model) or converted to `AgentRuntime` for optimized execution (compilation model). Tools are bound to ToolImpl implementations at execution time via ToolLibrary parameter.
 
 ### ToolInvocation (Existing, Enhanced)
 
@@ -499,8 +505,8 @@ Represents a single tool invocation during agent execution. Already defined in E
 - `invocationArgs` must conform to tool's schema (validated before invocation)
 
 **Relationships**:
-- ToolInvocation references a ToolSpecification (by name)
-- ToolInvocation uses Tool implementation from ToolLibrary
+- ToolInvocation references a Tool (by name)
+- ToolInvocation uses ToolImpl implementation from ToolLibrary
 - ToolInvocation is part of AgentResponse
 
 **Type Definition**:
@@ -577,37 +583,34 @@ data MessageRole
 
 A concrete example tool for the hello world demonstration.
 
-**ToolSpecification** (in gram notation):
+**Tool** (in gram notation):
 ```gram
-[sayHello:ToolSpecification {
+[sayHello:Tool {
   description: "Returns a friendly greeting message for the given name"
 } |
-  (personName::Text)==>(::String)
+  (personName::Text {default:"world"})==>(::String)
 ]
 ```
 
 **Note**: Tool name is the pattern identifier (`sayHello`), ensuring global uniqueness required for LLM tool calling. Parameter name `personName` is also a globally unique identifier, encouraging consistent vocabulary.
 
-**ToolSpecification** (Haskell):
+**Tool** (Pattern - primary):
 ```haskell
-sayHelloSpec :: ToolSpecification
-sayHelloSpec = ToolSpecification
-  { toolSpecName = "sayHello"
-  , toolSpecDescription = "Returns a friendly greeting message for the given name"
-  , toolSpecTypeSignature = "(personName::Text)==>(::String)"
-  , toolSpecSchema = typeSignatureToJSONSchema "(personName::Text)==>(::String)"  -- Auto-generated
-  }
+sayHello :: Tool
+sayHello = createTool
+  "sayHello"
+  "Returns a friendly greeting message for the given name"
+  "(personName::Text {default:\"world\"})==>(::String)"
 ```
 
-**Tool Implementation**:
+**ToolImpl Implementation**:
 ```haskell
-sayHelloTool :: Tool
-sayHelloTool = Tool
-  { toolName = "sayHello"
-  , toolDescription = "Returns a friendly greeting message for the given name"
-  , toolSchema = typeSignatureToJSONSchema "(personName::Text)==>(::String)"  -- Auto-generated from type signature
-      ]
-  , toolInvoke = \args -> do
+sayHelloImpl :: ToolImpl
+sayHelloImpl = ToolImpl
+  { toolImplName = "sayHello"
+  , toolImplDescription = "Returns a friendly greeting message for the given name"
+  , toolImplSchema = typeSignatureToJSONSchema "(personName::Text {default:\"world\"})==>(::String)"  -- Auto-generated from type signature
+  , toolImplInvoke = \args -> do
       let name = args ^. key "personName" . _String
       return $ String $ "Hello, " <> name <> "! Nice to meet you."
   }
@@ -616,7 +619,7 @@ sayHelloTool = Tool
 **ToolLibrary Registration**:
 ```haskell
 helloWorldToolLibrary :: ToolLibrary
-helloWorldToolLibrary = registerTool "sayHello" sayHelloTool emptyToolLibrary
+helloWorldToolLibrary = registerTool "sayHello" sayHelloImpl emptyToolLibrary
 ```
 
 ### Hello World Agent (Concrete Example)
@@ -628,23 +631,22 @@ A concrete example agent that uses the sayHello tool description.
 - `agentDescription = Just "A friendly agent that uses the sayHello tool to greet users"`
 - `agentModel = createModel "gpt-3.5-turbo" OpenAI`
 - `agentInstruction = "You are a friendly assistant. Have friendly conversations with the user. When the user greets you or says hello, use the `sayHello` tool to respond with a personalized greeting."`
-- `agentToolSpecs = [sayHelloSpec]`
+- `agentTools = [sayHello]`
 
-**Type Definition**:
+**Type Definition** (Pattern - primary):
 ```haskell
 helloWorldAgent :: Agent
-helloWorldAgent = Agent
-  { agentName = "hello_world_agent"
-  , agentDescription = Just "A friendly agent that uses the sayHello tool to greet users"
-  , agentModel = createModel "gpt-3.5-turbo" OpenAI
-  , agentInstruction = "You are a friendly assistant. Have friendly conversations with the user. When the user greets you or says hello, use the `sayHello` tool to respond with a personalized greeting."
-  , agentToolSpecs = [sayHelloSpec]
-  }
+helloWorldAgent = createAgent
+  "hello_world_agent"
+  (Just "A friendly agent that uses the sayHello tool to greet users")
+  (createModel "gpt-3.5-turbo" OpenAI)
+  "You are a friendly assistant. Have friendly conversations with the user. When the user greets you or says hello, use the `sayHello` tool to respond with a personalized greeting."
+  [sayHello]
 ```
 
-**Serialization**: This agent can be serialized to gram notation (tool descriptions only, no implementations)
+**Serialization**: This agent is already in gram notation (Pattern Subject), can be serialized directly
 
-**Execution**: Tool descriptions are bound to implementations at execution time:
+**Execution**: Tools are bound to ToolImpl implementations at execution time:
 ```haskell
 result <- executeAgentWithLibrary helloWorldAgent userInput context helloWorldToolLibrary
 ```
@@ -652,26 +654,26 @@ result <- executeAgentWithLibrary helloWorldAgent userInput context helloWorldTo
 ## Relationships Summary
 
 ```
-Agent
-  ├── has 0..* ToolSpecifications (serializable)
+Agent (Pattern - primary)
+  ├── has 0..* Tools (serializable, nested patterns)
   ├── produces AgentResponse
   └── maintains ConversationContext
 
-ToolSpecification (serializable)
+Tool (Pattern - primary, serializable)
   ├── belongs to 0..* Agents
-  └── bound to Tool at execution time via ToolLibrary
+  └── bound to ToolImpl at execution time via ToolLibrary
 
-Tool (executable, not serializable)
+ToolImpl (executable, not serializable)
   ├── registered in ToolLibrary
   └── produces ToolInvocation
 
 ToolLibrary
-  ├── maps tool names to Tool implementations
+  ├── maps tool names to ToolImpl implementations
   └── enables A/B testing (different implementations for same name)
 
 ToolInvocation
-  ├── references ToolSpecification (by name)
-  ├── uses Tool from ToolLibrary
+  ├── references Tool (by name)
+  ├── uses ToolImpl from ToolLibrary
   └── part of AgentResponse
 
 AgentResponse
@@ -683,58 +685,58 @@ ConversationContext
 
 ## State Transitions
 
-### Tool Specification Creation
-1. Developer provides: name, description, gram type signature in curried form (e.g., `(personName::Text)==>(::String)`)
+### Tool Creation (Pattern)
+1. Developer provides: name, description, gram type signature in curried form (e.g., `(personName::Text {default:"world"})==>(::String)`)
 2. System validates: name and description non-empty, type signature valid gram notation
 3. System generates: JSON schema from type signature using `typeSignatureToJSONSchema`
-4. System creates: ToolSpecification instance with name, description, type signature, and generated schema
-5. Result: ToolSpecification ready for serialization and agent association
+4. System creates: Tool (Pattern Subject) with name, description, type signature
+5. Result: Tool ready for serialization and agent association
 
-### Tool Implementation Creation
+### ToolImpl Implementation Creation
 1. Developer provides: name, description, schema, invoke function
-2. System validates: name, description, schema match ToolSpecification (optional)
-3. System creates: Tool instance
-4. Result: Tool ready for ToolLibrary registration
+2. System validates: name, description, schema match Tool (optional)
+3. System creates: ToolImpl instance
+4. Result: ToolImpl ready for ToolLibrary registration
 
 ### Tool Library Registration
-1. Developer provides: Tool name and Tool implementation
-2. System registers: Tool in ToolLibrary
+1. Developer provides: Tool name and ToolImpl implementation
+2. System registers: ToolImpl in ToolLibrary
 3. Result: ToolLibrary can resolve tool name to implementation
 
 ### Tool Association with Agent
-1. Developer provides: Agent and ToolSpecification
-2. System validates: ToolSpecification name unique within agent's tool list
-3. System updates: Agent with ToolSpecification added to agentToolSpecs list
-4. Result: Agent can reference tool specification (serializable)
+1. Developer provides: Agent and Tool
+2. System validates: Tool name unique within agent's tool list
+3. System updates: Agent with Tool added to agentTools list
+4. Result: Agent can reference tool (serializable Pattern)
 
 ### Tool Binding at Execution Time
-1. Execution environment receives: Agent with ToolSpecifications and ToolLibrary
-2. System binds: For each ToolSpecification, lookup Tool in ToolLibrary
-3. System validates: Tool matches ToolSpecification (name, description, schema)
-4. Result: Bound Tools ready for execution
+1. Execution environment receives: Agent with Tools and ToolLibrary
+2. System binds: For each Tool, lookup ToolImpl in ToolLibrary
+3. System validates: ToolImpl matches Tool (name, description, schema)
+4. Result: Bound ToolImpls ready for execution
 
 ### Tool Execution Flow
-1. Agent execution starts with user input, Agent (with ToolSpecifications), and ToolLibrary
-2. Tool binding: ToolSpecifications bound to Tool implementations from ToolLibrary
-3. LLM request built with tool definitions (from ToolSpecifications)
+1. Agent execution starts with user input, Agent (with Tools), and ToolLibrary
+2. Tool binding: Tools bound to ToolImpl implementations from ToolLibrary
+3. LLM request built with tool definitions (from Tools)
 4. LLM responds with tool call request
-5. System validates: Tool exists in bound Tools, parameters valid
-6. System invokes: Tool with parameters
+5. System validates: ToolImpl exists in bound ToolImpls, parameters valid
+6. System invokes: ToolImpl with parameters
 7. System sends: Tool result to LLM
 8. LLM generates: Final text response
 9. System returns: AgentResponse with content and tool invocations
 
 ## Validation Rules Summary
 
-- ToolSpecification name: non-empty, unique within agent
-- ToolSpecification description: non-empty
-- ToolSpecification typeSignature: valid gram notation type signature
-- ToolSpecification schema: auto-generated from typeSignature, must be valid JSON schema
-- Tool name: must match ToolSpecification name when bound
-- Tool implementation: must match ToolSpecification schema when bound (schema generated from type signature)
-- Agent tool specifications: list of ToolSpecifications, names unique within list
-- Tool binding: ToolSpecification must have matching Tool in ToolLibrary
-- Tool invocation: tool name must exist in bound Tools, parameters must match schema
+- Tool name: non-empty, unique within agent (pattern identifier)
+- Tool description: non-empty
+- Tool typeSignature: valid gram notation type signature
+- Tool schema: auto-generated from typeSignature, must be valid JSON schema
+- ToolImpl name: must match Tool name when bound
+- ToolImpl implementation: must match Tool schema when bound (schema generated from type signature)
+- Agent tools: list of Tools, names unique within list
+- Tool binding: Tool must have matching ToolImpl in ToolLibrary
+- Tool invocation: tool name must exist in bound ToolImpls, parameters must match schema
 - Conversation context: function messages must have tool name
 
 ## A/B Testing Support
@@ -742,21 +744,21 @@ ConversationContext
 **Scenario**: Test different tool implementations with the same agent specification.
 
 **Approach**:
-1. Create Agent with ToolSpecifications (same for both tests)
-2. Create ToolLibrary A with implementation A
-3. Create ToolLibrary B with implementation B (same tool name, different implementation)
+1. Create Agent with Tools (same for both tests)
+2. Create ToolLibrary A with ToolImpl A
+3. Create ToolLibrary B with ToolImpl B (same tool name, different implementation)
 4. Execute agent with ToolLibrary A → measure results
 5. Execute agent with ToolLibrary B → measure results
 6. Compare results
 
 **Example**:
 ```haskell
--- Same agent specification
-let agent = Agent { ..., agentToolSpecs = [sayHelloSpec] }
+-- Same agent specification (Pattern)
+let agent = createAgent "hello_agent" ... [sayHello]
 
 -- Different tool implementations
-let libraryA = registerTool "sayHello" sayHelloToolA emptyToolLibrary
-let libraryB = registerTool "sayHello" sayHelloToolB emptyToolLibrary
+let libraryA = registerTool "sayHello" sayHelloImplA emptyToolLibrary
+let libraryB = registerTool "sayHello" sayHelloImplB emptyToolLibrary
 
 -- A/B test
 resultA <- executeAgentWithLibrary agent input context libraryA

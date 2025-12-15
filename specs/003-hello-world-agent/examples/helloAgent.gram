@@ -1,10 +1,9 @@
 [hello_world_agent:Agent {
-  name: "hello_world_agent",
   description: "A friendly agent that uses the sayHello tool to greet users",
   instruction: "You are a friendly assistant. Have friendly conversations with the user. When the user greets you or says hello, use the `sayHello` tool to respond with a personalized greeting.",
   model: "OpenAI/gpt-3.5-turbo"
 } |
-  [sayHello:ToolSpecification {
+  [sayHello:Tool {
     description: "Returns a friendly greeting message for the given name"
   } |
     (personName::Text {default:"world"})==>(::String)

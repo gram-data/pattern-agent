@@ -1,6 +1,6 @@
-[sayHello:ToolSpecification {
+[sayHello:Tool {
   description: "Returns a friendly greeting message for the given name"
 } |
-  (personName::Text)==>(::String)
+  (personName::Text {default:"world"})==>(::String)
 ]
 

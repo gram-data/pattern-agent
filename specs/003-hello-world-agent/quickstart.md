@@ -11,31 +11,32 @@
 - Pattern-agent library installed
 - Understanding of basic agent creation (see specs/002-llm-agent/quickstart.md)
 
-## Example 1: Create a Tool Specification
+## Example 1: Create a Tool (Pattern)
 
-Create a tool specification using gram type signature.
+Create a tool using gram type signature.
 
 ```haskell
 import PatternAgent.Tool
 import Data.Text
 
--- Define the sayHello tool specification with gram type signature (curried form)
-sayHelloSpec :: ToolSpecification
-sayHelloSpec = createToolSpecification
+-- Define the sayHello tool with gram type signature (curried form)
+sayHello :: Tool
+sayHello = createTool
   "sayHello"
   "Returns a friendly greeting message for the given name"
-  "(personName::Text)==>(::String)"
+  "(personName::Text {default:\"world\"})==>(::String)"
 ```
 
 **Key Points**:
-- Tool specification uses gram path notation type signature in curried form
-- Type signature `(personName::Text)==>(::String)` uses curried form with parameter names as identifiers
+- Tool uses gram path notation type signature in curried form
+- Type signature `(personName::Text {default:"world"})==>(::String)` uses curried form with parameter names as identifiers
 - JSON schema is automatically generated from the type signature
 - Parameter name `personName` is a globally unique identifier, encouraging consistent vocabulary
+- Default value `"world"` is specified for optional parameter
 - `Text` type maps to JSON `string` type automatically
 - `String` is the JSON Schema return type (Haskell implementation may be `IO Text`, but gram represents JSON Schema interface)
 
-## Example 1b: Create a Tool Implementation
+## Example 1b: Create a ToolImpl Implementation
 
 Create the executable tool implementation.
 
@@ -45,50 +46,50 @@ import Data.Aeson
 import Data.Text
 
 -- Define the sayHello tool implementation
-sayHelloTool :: Tool
-sayHelloTool = createTool
+sayHelloImpl :: ToolImpl
+sayHelloImpl = createToolImpl
   "sayHello"
   "Returns a friendly greeting message for the given name"
-  (typeSignatureToJSONSchema "(personName::Text)==>(::String)")  -- Auto-generated schema
+  (typeSignatureToJSONSchema "(personName::Text {default:\"world\"})==>(::String)")  -- Auto-generated schema
   (\args -> do
-    -- Extract personName from JSON arguments
-    let name = args ^. key "personName" . _String
+    -- Extract personName from JSON arguments (use default if missing)
+    let name = fromMaybe "world" $ args ^? key "personName" . _String
     -- Return greeting message
     return $ String $ "Hello, " <> name <> "! Nice to meet you."
   )
 ```
 
 **Key Points**:
-- Tool implementation uses the same type signature as specification
+- ToolImpl uses the same type signature as Tool (Pattern)
 - JSON schema is generated from type signature (no manual schema needed)
 - Invocation function converts JSON arguments to Haskell types and back
+- Default values should be handled in implementation
 
-## Example 2: Create an Agent with Tool Specifications
+## Example 2: Create an Agent with Tools
 
-Create an agent and equip it with tool specifications.
+Create an agent and equip it with tools.
 
 ```haskell
 import PatternAgent.Agent
 import PatternAgent.LLM
 import PatternAgent.Tool
 
--- Create agent with sayHello tool specification
-let agent = Agent
-      { agentName = "hello_world_agent"
-      , agentDescription = Just "A friendly agent that uses the sayHello tool to greet users"
-      , agentModel = createModel "gpt-3.5-turbo" OpenAI
-      , agentInstruction = "You are a friendly assistant. Have friendly conversations with the user. When the user greets you or says hello, use the `sayHello` tool to respond with a personalized greeting."
-      , agentToolSpecs = [sayHelloSpec]  -- Tool specifications, not implementations
-      }
+-- Create agent with sayHello tool (Pattern)
+let agent = createAgent
+      "hello_world_agent"
+      (Just "A friendly agent that uses the sayHello tool to greet users")
+      (createModel "gpt-3.5-turbo" OpenAI)
+      "You are a friendly assistant. Have friendly conversations with the user. When the user greets you or says hello, use the `sayHello` tool to respond with a personalized greeting."
+      [sayHello]  -- Tools (Pattern), not implementations
 ```
 
 **Key Points**:
-- `agentToolSpecs` is a list of tool specifications (serializable) available to the agent
-- Tool specifications use gram path notation type signatures in curried form (e.g., `(personName::Text)==>(::String)`)
+- `agentTools` is a list of tools (Pattern, serializable) available to the agent
+- Tools use gram path notation type signatures in curried form (e.g., `(personName::Text {default:"world"})==>(::String)`)
 - Agent instructions should guide when and how to use tools
-- Tool specifications can be shared across multiple agents
-- Agent can have zero tool specifications (tool-free agents still supported)
-- Tool implementations are bound at execution time via ToolLibrary
+- Tools can be shared across multiple agents
+- Agent can have zero tools (tool-free agents still supported)
+- ToolImpl implementations are bound at execution time via ToolLibrary
 
 ## Example 3: Execute Agent with Tool Support
 
@@ -100,7 +101,7 @@ import PatternAgent.Context
 import PatternAgent.Tool
 
 -- Create tool library with sayHello implementation
-let toolLibrary = registerTool "sayHello" sayHelloTool emptyToolLibrary
+let toolLibrary = registerTool "sayHello" sayHelloImpl emptyToolLibrary
 
 -- Execute agent with tool library
 let context = emptyContext
@@ -189,37 +190,36 @@ import Data.Aeson
 import Data.Text (Text, pack, unpack)
 import qualified Data.Text as T
 
--- Create sayHello tool specification
-sayHelloSpec :: ToolSpecification
-sayHelloSpec = createToolSpecification
+-- Create sayHello tool (Pattern)
+sayHello :: Tool
+sayHello = createTool
   "sayHello"
   "Returns a friendly greeting message for the given name"
-  "(personName::Text)==>(::String)"
+  "(personName::Text {default:\"world\"})==>(::String)"
 
 -- Create sayHello tool implementation
-sayHelloTool :: Tool
-sayHelloTool = createTool
+sayHelloImpl :: ToolImpl
+sayHelloImpl = createToolImpl
   "sayHello"
   "Returns a friendly greeting message for the given name"
-  (typeSignatureToJSONSchema "(personName::Text)==>(::String)")  -- Auto-generated schema
+  (typeSignatureToJSONSchema "(personName::Text {default:\"world\"})==>(::String)")  -- Auto-generated schema
   (\args -> do
-    let name = args ^. key "personName" . _String
+    let name = fromMaybe "world" $ args ^? key "personName" . _String
     return $ String $ "Hello, " <> name <> "! Nice to meet you."
   )
 
 -- Create tool library
 helloWorldToolLibrary :: ToolLibrary
-helloWorldToolLibrary = registerTool "sayHello" sayHelloTool emptyToolLibrary
+helloWorldToolLibrary = registerTool "sayHello" sayHelloImpl emptyToolLibrary
 
--- Create hello world agent
+-- Create hello world agent (Pattern)
 helloWorldAgent :: Agent
-helloWorldAgent = Agent
-  { agentName = "hello_world_agent"
-  , agentDescription = Just "A friendly agent that uses the sayHello tool to greet users"
-  , agentModel = createModel "gpt-3.5-turbo" OpenAI
-  , agentInstruction = "You are a friendly assistant. Have friendly conversations with the user. When the user greets you or says hello, use the `sayHello` tool to respond with a personalized greeting."
-  , agentToolSpecs = [sayHelloSpec]  -- Tool specifications
-  }
+helloWorldAgent = createAgent
+  "hello_world_agent"
+  (Just "A friendly agent that uses the sayHello tool to greet users")
+  (createModel "gpt-3.5-turbo" OpenAI)
+  "You are a friendly assistant. Have friendly conversations with the user. When the user greets you or says hello, use the `sayHello` tool to respond with a personalized greeting."
+  [sayHello]  -- Tools (Pattern)
 
 -- Main execution
 main :: IO ()
@@ -266,27 +266,27 @@ Examples of gram type signatures for different tool patterns:
 
 **Simple single parameter**:
 ```haskell
-createToolSpecification "getTime" "Gets current time" "()==>(::String)"
+createTool "getTime" "Gets current time" "()==>(::String)"
 ```
 
 **Named parameters** (curried form with identifiers):
 ```haskell
-createToolSpecification "greet" "Greets a person" "(personName::Text)==>(::String)"
+createTool "greet" "Greets a person" "(personName::Text)==>(::String)"
 ```
 
 **Multiple parameters** (curried form):
 ```haskell
-createToolSpecification "calculate" "Adds two numbers" "(a::Int)==>(b::Int)==>(::Int)"
+createTool "calculate" "Adds two numbers" "(a::Int)==>(b::Int)==>(::Int)"
 ```
 
 **Optional parameters**:
 ```haskell
-createToolSpecification "search" "Searches with optional limit" "(query::Text)==>(limit::Int {default:10})==>(::Array)"
+createTool "search" "Searches with optional limit" "(query::Text)==>(limit::Int {default:10})==>(::Array)"
 ```
 
 **Record parameters**:
 ```haskell
-createToolSpecification "createUser" "Creates a user" "(userParams::Object {fields:[{name:\"name\", type:\"Text\"}, {name:\"email\", type:\"Text\"}, {name:\"age\", type:\"Int\"}]})==>(::String)"
+createTool "createUser" "Creates a user" "(userParams::Object {fields:[{name:\"name\", type:\"Text\"}, {name:\"email\", type:\"Text\"}, {name:\"age\", type:\"Int\"}]})==>(::String)"
 ```
 
 ### Tool Parameter Extraction

@@ -7,7 +7,7 @@
 
 ## Summary
 
-Complete agent execution infrastructure by implementing tool creation, tool association with agents, and tool execution during agent runs. **The implementation begins with designing the gram notation format for tool specifications, using gram path notation in curried form with parameter names as identifiers (e.g., `(personName::Text)==>(::String)`).** This design artifact (tool description format) will then be used for all subsequent implementation steps. The feature anchors the implementation in a concrete "hello world" example agent that uses the `sayHello` tool to respond to user greetings, demonstrating the complete tool execution flow end-to-end. The implementation builds upon existing execution infrastructure (Execution.hs) and LLM client (LLM.hs) to add tool support, enabling agents to extend their capabilities beyond the LLM's built-in knowledge.
+Complete agent execution infrastructure by implementing tool creation, tool association with agents, and tool execution during agent runs. **The implementation begins with designing the gram notation format for tools, using gram path notation in curried form with parameter names as identifiers (e.g., `(personName::Text {default:"world"})==>(::String)`).** This design artifact (tool description format) will then be used for all subsequent implementation steps. The feature anchors the implementation in a concrete "hello world" example agent that uses the `sayHello` tool to respond to user greetings, demonstrating the complete tool execution flow end-to-end. The implementation builds upon existing execution infrastructure (Execution.hs) and LLM client (LLM.hs) to add tool support, enabling agents to extend their capabilities beyond the LLM's built-in knowledge.
 
 ## Technical Context
 
@@ -89,7 +89,7 @@ Complete agent execution infrastructure by implementing tool creation, tool asso
   - Coverage: All tool operations, agent tool integration, execution paths, and hello world example
 
 ### Principle 4: Expressiveness and Correctness
-- [x] **API Design**: APIs designed for intuitive use and clarity - **Tool specification uses gram type signatures (concise, self-documenting)**, tool creation API (createToolSpecification with type signature) is straightforward, tool association via Agent.agentToolSpecs field is clear, executeAgentWithLibrary handles tool execution automatically, contracts document API clearly
+- [x] **API Design**: APIs designed for intuitive use and clarity - **Tool (Pattern) uses gram type signatures (concise, self-documenting)**, tool creation API (createTool with type signature) is straightforward, tool association via Agent.agentTools field is clear, executeAgentWithLibrary handles tool execution automatically, contracts document API clearly
 - [x] **Edge Cases**: Edge cases identified in spec.md:
   - Agent tries to invoke tool that doesn't exist
   - LLM provides invalid parameters (wrong type, missing required parameters)
@@ -130,19 +130,19 @@ Complete agent execution infrastructure by implementing tool creation, tool asso
 
 **Deliverables**:
 1. **Gram Type Signature Grammar**: Define the grammar for representing tool type signatures in gram path notation using curried form with parameter names as identifiers (e.g., `(personName::Text)==>(::String)`)
-2. **ToolSpecification Gram Schema**: Design the complete gram schema for ToolSpecification including:
+2. **Tool Gram Schema**: Design the complete gram schema for Tool including:
    - Tool name
    - Tool description
    - Type signature (in gram notation)
    - Schema generation rules (how to convert gram type signature to JSON schema)
 3. **Type Signature Parser Design**: Design parser for gram type signatures
 4. **Schema Generator Design**: Design algorithm to convert gram type signatures to JSON schemas
-5. **Example ToolSpecification in Gram**: Complete example of sayHello tool in gram notation
+5. **Example Tool in Gram**: Complete example of sayHello tool in gram notation
 
 **Output Artifacts**:
-- `specs/003-hello-world-agent/tool-specification-gram.md` - Gram notation schema for tool specifications
+- `specs/003-hello-world-agent/tool-specification-gram.md` - Gram notation schema for tools
 - `specs/003-hello-world-agent/type-signature-grammar.md` - Grammar definition for type signatures
-- `specs/003-hello-world-agent/examples/sayHello.gram` - Example tool specification in gram
+- `specs/003-hello-world-agent/examples/sayHello.gram` - Example tool in gram
 
 **Dependencies**: 
 - This phase must complete before any implementation begins
@@ -153,9 +153,9 @@ Complete agent execution infrastructure by implementing tool creation, tool asso
 **Prerequisites**: Phase 0.5 complete (tool description design available)
 
 **Changes**:
-- ToolSpecification design now uses gram type signatures instead of manual JSON schemas
+- Tool (Pattern) design now uses gram type signatures instead of manual JSON schemas
 - Data model references gram type signature format
-- Contracts updated to reflect gram-based tool specifications
+- Contracts updated to reflect gram-based tools
 
 ## Project Structure
 
