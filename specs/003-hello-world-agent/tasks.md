@@ -261,19 +261,63 @@
 
 ---
 
-## Phase 8: Polish & Cross-Cutting Concerns
+## Phase 8: CLI Agent Execution
+
+**Purpose**: Enable command-line execution of agents from gram files with tool support
+
+**Goal**: Enable developers to execute agents from gram files via CLI using the `--agent` flag, supporting the hello world agent with sayHello tool.
+
+**Independent Test**: Can be fully tested by verifying CLI can load a gram file, parse the agent, create tool library, and execute the agent with tool support.
+
+### Tests for Phase 8 (Principle 3: Dual Testing Strategy) ⚠️
+
+**Scenario Tests**:
+- [ ] T118 [P] [CLI] Scenario test: CLI loads agent from gram file and executes with tool support in tests/scenario/CLIAgentExecutionTest.hs
+- [ ] T119 [P] [CLI] Scenario test: CLI executes hello world agent with sayHello tool and produces greeting in tests/scenario/CLIAgentExecutionTest.hs
+- [ ] T120 [P] [CLI] Scenario test: CLI handles missing gram file gracefully with error message in tests/scenario/CLIAgentExecutionTest.hs
+- [ ] T121 [P] [CLI] Scenario test: CLI handles invalid gram file format gracefully with error message in tests/scenario/CLIAgentExecutionTest.hs
+
+**Unit Tests**:
+- [ ] T122 [P] [CLI] Unit test: Command line argument parsing for --agent flag in tests/unit/CLITest.hs
+- [ ] T123 [P] [CLI] Unit test: Gram file loading and parsing in tests/unit/CLITest.hs
+- [ ] T124 [P] [CLI] Unit test: Agent extraction from parsed gram file in tests/unit/CLITest.hs
+- [ ] T125 [P] [CLI] Unit test: Tool library creation from agent tools in tests/unit/CLITest.hs
+- [ ] T126 [P] [CLI] Unit test: Error handling for file not found in tests/unit/CLITest.hs
+- [ ] T127 [P] [CLI] Unit test: Error handling for invalid gram syntax in tests/unit/CLITest.hs
+
+### Implementation for Phase 8 (Principle 4: Expressiveness and Correctness)
+
+- [ ] T128 [CLI] Update parseArgs function in app/Main.hs to support --agent flag with file path argument
+- [ ] T129 [CLI] Implement loadGramFile function in app/Main.hs to read and return gram file contents
+- [ ] T130 [CLI] Implement parseAgentFromGram function in app/Main.hs to parse gram file and extract Agent (Pattern)
+- [ ] T131 [CLI] Implement createToolLibraryFromAgent function in app/Main.hs to create ToolLibrary from agent's tools (initially supports sayHello tool for hello world agent)
+- [ ] T132 [CLI] Update main function in app/Main.hs to handle --agent mode: load gram file, parse agent, create tool library, execute agent
+- [ ] T133 [CLI] Add error handling for missing --agent file path in app/Main.hs
+- [ ] T134 [CLI] Add error handling for file read errors in app/Main.hs
+- [ ] T135 [CLI] Add error handling for gram parsing errors in app/Main.hs
+- [ ] T136 [CLI] Add error handling for agent execution errors in app/Main.hs
+- [ ] T137 [CLI] Update usage message in app/Main.hs to document --agent flag: `pattern-agent --agent <gram-file> [--debug] <message>`
+- [ ] T138 [CLI] Ensure --agent mode works with existing --debug flag in app/Main.hs
+- [ ] T139 [CLI] Add validation that gram file contains exactly one Agent pattern in app/Main.hs
+- [ ] T140 [CLI] Add support for hello world agent: detect sayHello tool, create ToolImpl, register in ToolLibrary in app/Main.hs
+
+**Checkpoint**: At this point, developers can execute agents from gram files via CLI. The hello world agent with sayHello tool should work end-to-end.
+
+---
+
+## Phase 9: Polish & Cross-Cutting Concerns
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T109 [P] Add comprehensive error handling for all edge cases in src/PatternAgent/Runtime/Execution.hs (tool timeout scenarios, multiple simultaneous tool calls, agent with no tools but LLM requests tool call)
-- [ ] T110 [P] Update module exports in Language modules (Core, Schema, TypeSignature, Serialization), Runtime modules (Execution, ToolLibrary, LLM, Context), and HelloWorld.hs
-- [ ] T111 [P] Add Haddock documentation to all public functions in Language modules, Runtime modules, and HelloWorld.hs
-- [ ] T112 [P] Run quickstart.md examples validation
-- [ ] T113 [P] Additional unit tests for edge cases in tests/unit/ (tool with no parameters, tool with optional parameters, tool with nested record parameters)
-- [ ] T114 [P] Additional scenario tests for complex workflows in tests/scenario/ (multiple tools, tool chaining, error recovery)
-- [ ] T115 [P] Code cleanup and refactoring across all modules
-- [ ] T116 [P] Update pattern-agent.cabal exposed-modules list to include all Language modules, Runtime modules, and PatternAgent.HelloWorld
-- [ ] T117 [P] Verify tool-free agents still work correctly (agents with empty tools list)
+- [ ] T141 [P] Add comprehensive error handling for all edge cases in src/PatternAgent/Runtime/Execution.hs (tool timeout scenarios, multiple simultaneous tool calls, agent with no tools but LLM requests tool call)
+- [ ] T142 [P] Update module exports in Language modules (Core, Schema, TypeSignature, Serialization), Runtime modules (Execution, ToolLibrary, LLM, Context), and HelloWorld.hs
+- [ ] T143 [P] Add Haddock documentation to all public functions in Language modules, Runtime modules, and HelloWorld.hs
+- [ ] T144 [P] Run quickstart.md examples validation
+- [ ] T145 [P] Additional unit tests for edge cases in tests/unit/ (tool with no parameters, tool with optional parameters, tool with nested record parameters)
+- [ ] T146 [P] Additional scenario tests for complex workflows in tests/scenario/ (multiple tools, tool chaining, error recovery)
+- [ ] T147 [P] Code cleanup and refactoring across all modules
+- [ ] T148 [P] Update pattern-agent.cabal exposed-modules list to include all Language modules, Runtime modules, and PatternAgent.HelloWorld
+- [ ] T149 [P] Verify tool-free agents still work correctly (agents with empty tools list)
 
 ---
 
@@ -286,7 +330,8 @@
 - **User Stories (Phase 3+)**: All depend on Foundational phase completion
   - User stories can then proceed in parallel (if staffed)
   - Or sequentially in priority order (P1 → P2)
-- **Polish (Final Phase)**: Depends on all desired user stories being complete
+- **CLI (Phase 8)**: Depends on User Stories 1-4 (needs complete agent execution with tools)
+- **Polish (Final Phase)**: Depends on all desired user stories and CLI being complete
 
 ### User Story Dependencies
 
@@ -295,6 +340,7 @@
 - **User Story 3 (P1)**: Depends on User Stories 1 and 2 (needs Tool, ToolImpl, ToolLibrary, and Agent with tools)
 - **User Story 4 (P1)**: Depends on User Stories 1, 2, and 3 (needs complete tool system and execution with tools)
 - **User Story 5 (P2)**: Depends on User Story 3 (needs tool execution infrastructure for context integration)
+- **Phase 8 (CLI)**: Depends on User Stories 1, 2, 3, and 4 (needs complete agent execution with tools, hello world example)
 
 ### Within Each User Story
 
@@ -312,6 +358,7 @@
   - After US1 completes, US2 can start (US2 extends Agent with tool specs)
   - After US2 completes, US3 can start (US3 uses Agent with tool specs)
   - After US3 completes, US4 and US5 can start (US4 uses complete tool system, US5 extends execution)
+  - After US4 completes, Phase 8 (CLI) can start (CLI uses complete agent execution with tools)
 - All tests for a user story marked [P] can run in parallel
 - Types within a story marked [P] can run in parallel
 - Different user stories can be worked on in parallel by different team members (respecting dependencies)
@@ -345,7 +392,7 @@ Task: "Define TypeSignature parsed representation type in src/PatternAgent/Langu
 
 ## Implementation Strategy
 
-### MVP First (User Stories 1-4 Only)
+### MVP First (User Stories 1-4 + CLI)
 
 1. Complete Phase 1: Setup
 2. Complete Phase 2: Foundational (CRITICAL - blocks all stories)
@@ -353,8 +400,9 @@ Task: "Define TypeSignature parsed representation type in src/PatternAgent/Langu
 4. Complete Phase 4: User Story 2 (Equip Agents with Tools)
 5. Complete Phase 5: User Story 3 (Execute Tools During Agent Execution)
 6. Complete Phase 6: User Story 4 (Hello World Example Agent)
-7. **STOP and VALIDATE**: Test all user stories independently
-8. Deploy/demo if ready
+7. Complete Phase 8: CLI Agent Execution (command-line interface)
+8. **STOP and VALIDATE**: Test all user stories and CLI independently
+9. Deploy/demo if ready
 
 ### Incremental Delivery
 
@@ -363,8 +411,9 @@ Task: "Define TypeSignature parsed representation type in src/PatternAgent/Langu
 3. Add User Story 2 → Test independently → Deploy/Demo (tool association)
 4. Add User Story 3 → Test independently → Deploy/Demo (tool execution)
 5. Add User Story 4 → Test independently → Deploy/Demo (hello world example)
-6. Add User Story 5 → Test independently → Deploy/Demo (conversation context with tools)
-7. Each story adds value without breaking previous stories
+6. Add Phase 8 (CLI) → Test independently → Deploy/Demo (CLI agent execution)
+7. Add User Story 5 → Test independently → Deploy/Demo (conversation context with tools)
+8. Each story/phase adds value without breaking previous stories
 
 ### Parallel Team Strategy
 
@@ -375,8 +424,9 @@ With multiple developers:
    - Developer A: User Story 1 (tool creation)
    - After US1: Developer A continues with US2, Developer B starts US3 prep
    - After US2: Developer A continues with US3, Developer B starts US4
-   - After US3: Developer A continues with US4, Developer B starts US5
-3. Stories complete and integrate independently
+   - After US3: Developer A continues with US4, Developer B starts CLI (Phase 8)
+   - After US4: Developer A continues with CLI, Developer B starts US5
+3. Stories/Phases complete and integrate independently
 
 ---
 
@@ -389,8 +439,9 @@ With multiple developers:
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
-- Total tasks: 117
+- Total tasks: 149
 - MVP scope: Phases 1-6 (User Stories 1-4) = 98 tasks
-- Full feature scope: All phases = 117 tasks
+- CLI scope: Phases 1-8 (User Stories 1-4 + CLI) = 140 tasks
+- Full feature scope: All phases = 149 tasks
 - Phase 0.5 (Tool Description Design) is already complete - gram notation format designed
 
