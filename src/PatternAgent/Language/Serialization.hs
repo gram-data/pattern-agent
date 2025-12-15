@@ -23,11 +23,15 @@ module PatternAgent.Language.Serialization
 
 import PatternAgent.Language.Core (Agent, Tool)
 import Pattern (Pattern Subject)
+import Pattern.Core (value, elements, patternWith)
+import Subject.Core (Subject(..), Symbol(..))
 import qualified Gram
 import Gram.Parse (ParseError(..))
 import Data.Aeson (Value)
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Set as Set
+import Control.Monad (unless)
 
 -- | Parse gram notation string to Pattern Subject.
 -- Uses gram-hs parser to convert gram notation text to Pattern Subject.
@@ -37,12 +41,74 @@ parseGram gram = case Gram.fromGram (T.unpack gram) of
   Right pattern -> Right pattern
 
 -- | Parse agent from gram notation.
+--
+-- Parses a gram string and validates it represents an Agent pattern.
+-- The parsed pattern must have the "Agent" label.
 parseAgent :: Text -> Either Text Agent
-parseAgent gram = undefined -- TODO: Implement agent parsing
+parseAgent gram = do
+  pattern <- parseGram gram
+  -- Validate that the pattern has "Agent" label
+  let subject = value pattern
+  unless ("Agent" `Set.member` labels subject) $
+    Left "Parsed pattern does not have 'Agent' label"
+  Right pattern
+
+-- | Normalize type signature pattern by inferring FunctionType label.
+--
+-- When a type signature pattern (path notation with function arrows) doesn't
+-- have a FunctionType label, we infer it from context. This allows gram notation
+-- to omit the label for cleaner syntax: (personName::Text)==>(::String)
+--
+-- Path notation like (a)==>(b) is parsed by gram-hs into relationship patterns.
+-- The `==>` is syntax, not an identifier - when parsed, it becomes an anonymous
+-- relationship pattern with 2 elements (source and target nodes).
+--
+-- Works for both simple and curried function signatures:
+-- - Simple: (personName::Text)==>(::String) -> relationship pattern with 2 elements
+-- - Curried: (personName::String)==>(repetitionCount::Integer)==>(::String) 
+--   -> pattern containing multiple relationship patterns, each with 2 elements
+--
+-- Inference rules:
+-- - Pattern has exactly 2 elements (relationship pattern: source -> target) -> add FunctionType label
+-- - Pattern contains nested patterns -> recursively normalize those patterns
+-- - Pattern doesn't already have FunctionType label
+normalizeTypeSignaturePattern :: Pattern Subject -> Pattern Subject
+normalizeTypeSignaturePattern patternElem =
+  let subject = value patternElem
+      currentLabels = labels subject
+      elemCount = length (elements patternElem)
+      -- Recursively normalize nested elements (for curried functions)
+      normalizedElements = map normalizeTypeSignaturePattern (elements patternElem)
+  in
+    -- Infer FunctionType if:
+    -- 1. Pattern has exactly 2 elements (relationship pattern structure: source -> target)
+    -- 2. Doesn't already have FunctionType label
+    -- Note: The relationship may be anonymous (no identifier) - that's fine, we're checking structure
+    if elemCount == 2 && not ("FunctionType" `Set.member` currentLabels)
+      then patternElem 
+        { value = subject { labels = Set.insert "FunctionType" currentLabels }
+        , elements = normalizedElements
+        }
+      else patternElem { elements = normalizedElements }
 
 -- | Parse tool from gram notation.
+--
+-- Parses a gram string and validates it represents a Tool pattern.
+-- The parsed pattern must have the "Tool" label.
+-- Type signature elements are normalized to infer FunctionType labels when missing.
 parseTool :: Text -> Either Text Tool
-parseTool gram = undefined -- TODO: Implement tool parsing
+parseTool gram = do
+  pattern <- parseGram gram
+  -- Validate that the pattern has "Tool" label
+  let subject = value pattern
+  unless ("Tool" `Set.member` labels subject) $
+    Left "Parsed pattern does not have 'Tool' label"
+  
+  -- Normalize type signature elements by inferring FunctionType labels
+  let normalizedElements = map normalizeTypeSignaturePattern (elements pattern)
+  let normalizedPattern = pattern { elements = normalizedElements }
+  
+  Right normalizedPattern
 
 -- | Convert Pattern Subject to gram notation string.
 -- Uses gram-hs serializer to convert Pattern Subject to gram notation text.

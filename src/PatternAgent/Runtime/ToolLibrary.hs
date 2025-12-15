@@ -60,18 +60,23 @@ data ToolLibrary = ToolLibrary
   deriving (Eq, Show, Generic)
 
 -- | Create a tool implementation.
+--
+-- Validates that name and description are non-empty.
 createToolImpl
   :: Text              -- ^ name: Tool name
   -> Text              -- ^ description: Tool description
   -> Value             -- ^ schema: JSON schema
   -> (Value -> IO Value)  -- ^ invoke: Tool invocation function
-  -> ToolImpl
-createToolImpl name description schema invoke = ToolImpl
-  { toolImplName = name
-  , toolImplDescription = description
-  , toolImplSchema = schema
-  , toolImplInvoke = invoke
-  }
+  -> Either Text ToolImpl  -- ^ Returns Right ToolImpl or Left error message
+createToolImpl name description schema invoke
+  | T.null name = Left "ToolImpl name cannot be empty"
+  | T.null description = Left "ToolImpl description cannot be empty"
+  | otherwise = Right $ ToolImpl
+      { toolImplName = name
+      , toolImplDescription = description
+      , toolImplSchema = schema
+      , toolImplInvoke = invoke
+      }
 
 -- | Create an empty tool library.
 emptyToolLibrary :: ToolLibrary

@@ -35,17 +35,19 @@ module PatternAgent.Language.Core
   ) where
 
 import Control.Lens (Lens', lens, view, set)
-import Data.Aeson (Value)
+import Control.Monad (unless)
+import Data.Aeson (Value, object, (.=))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Pattern (Pattern(..))
-import Pattern.Core (value, elements)
+import Pattern.Core (value, elements, patternWith)
 import Subject.Core (Subject(..), Symbol(..))
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import qualified Data.List as List
 import Subject.Value (Value(..))
 import qualified Gram
-import PatternAgent.Language.TypeSignature (typeSignatureToJSONSchema, extractTypeSignatureFromPattern)
+import PatternAgent.Language.TypeSignature (typeSignatureToJSONSchema, extractTypeSignatureFromPattern, validateTypeSignature)
 
 -- | Model provider enumeration.
 data Provider
@@ -77,23 +79,73 @@ type Tool = Pattern Subject
 
 -- | Lens for agent name (pattern identifier).
 agentName :: Lens' Agent Text
-agentName = undefined -- TODO: Implement using Pattern Subject identifier access
+agentName = lens getter setter
+  where
+    getter p = case identity (value p) of
+      Symbol s -> T.pack s
+    setter p n = p { value = (value p) { identity = Symbol (T.unpack n) } }
 
 -- | Lens for agent description (property).
 agentDescription :: Lens' Agent (Maybe Text)
-agentDescription = undefined -- TODO: Implement using Pattern Subject property access
+agentDescription = lens getter setter
+  where
+    getter p = case Map.lookup "description" (properties (value p)) of
+      Just (VString s) -> Just (T.pack s)
+      _ -> Nothing
+    setter p (Just desc) = p
+      { value = (value p)
+          { properties = Map.insert "description" (VString (T.unpack desc)) (properties (value p))
+          }
+      }
+    setter p Nothing = p
+      { value = (value p)
+          { properties = Map.delete "description" (properties (value p))
+          }
+      }
 
 -- | Lens for agent model (property, stored as "provider/model-name" string).
 agentModel :: Lens' Agent Model
-agentModel = undefined -- TODO: Implement using Pattern Subject property access
+agentModel = lens getter setter
+  where
+    getter p = case Map.lookup "model" (properties (value p)) of
+      Just (VString modelStr) -> parseModel (T.pack modelStr)
+      _ -> Model { modelId = "gpt-3.5-turbo", modelProvider = OpenAI }  -- Default
+    setter p model = p
+      { value = (value p)
+          { properties = Map.insert "model" (VString (T.unpack (modelToString model))) (properties (value p))
+          }
+      }
+    parseModel :: Text -> Model
+    parseModel s = case T.splitOn "/" s of
+      [providerStr, modelIdStr] -> Model
+        { modelId = modelIdStr
+        , modelProvider = case providerStr of
+            "OpenAI" -> OpenAI
+            "Anthropic" -> Anthropic
+            "Google" -> Google
+            _ -> OpenAI  -- Default
+        }
+      _ -> Model { modelId = s, modelProvider = OpenAI }  -- Fallback
 
 -- | Lens for agent instruction (property).
 agentInstruction :: Lens' Agent Text
-agentInstruction = undefined -- TODO: Implement using Pattern Subject property access
+agentInstruction = lens getter setter
+  where
+    getter p = case Map.lookup "instruction" (properties (value p)) of
+      Just (VString s) -> T.pack s
+      _ -> T.empty
+    setter p inst = p
+      { value = (value p)
+          { properties = Map.insert "instruction" (VString (T.unpack inst)) (properties (value p))
+          }
+      }
 
 -- | Lens for agent tools (nested pattern elements).
 agentTools :: Lens' Agent [Tool]
-agentTools = undefined -- TODO: Implement using Pattern Subject elements access
+agentTools = lens getter setter
+  where
+    getter p = elements p
+    setter p tools = p { elements = tools }
 
 -- | Lens for tool name (pattern identifier).
 toolName :: Lens' Tool Text
@@ -158,7 +210,29 @@ createAgent
 createAgent name description model instruction tools
   | T.null name = Left "Agent name cannot be empty"
   | T.null instruction = Left "Agent instruction cannot be empty"
-  | otherwise = undefined -- TODO: Construct Pattern Subject with identifier=name, properties={description, model, instruction}, elements=tools
+  | otherwise = do
+      -- Validate unique tool names
+      let toolNames = map (view toolName) tools
+      let uniqueNames = List.nub toolNames
+      unless (length toolNames == length uniqueNames) $
+        Left "Tool names must be unique within agent's tool list"
+      
+      -- Construct properties map
+      let baseProps = Map.fromList
+            [ ("model", VString (T.unpack (modelToString model)))
+            , ("instruction", VString (T.unpack instruction))
+            ]
+      let props = case description of
+            Just desc -> Map.insert "description" (VString (T.unpack desc)) baseProps
+            Nothing -> baseProps
+      
+      -- Construct Pattern Subject with Agent label, properties, and tools as elements
+      let subject = Subject
+            { identity = Symbol (T.unpack name)
+            , labels = Set.fromList ["Agent"]
+            , properties = props
+            }
+      Right $ patternWith subject tools
 
 -- | Validate an agent pattern structure.
 --
@@ -166,27 +240,64 @@ createAgent name description model instruction tools
 validateAgent :: Agent -> Either Text ()
 validateAgent agent = undefined -- TODO: Validate Pattern Subject structure
 
--- | Create a tool from components.
+-- | Create a tool from components (programmatic, no parsing).
 --
 -- This constructs a Pattern Subject representing a tool specification.
 -- The tool name becomes the pattern identifier, description is a property,
 -- and type signature is stored in pattern elements.
+--
+-- For parsing from gram notation, use PatternAgent.Language.Serialization.parseTool.
 createTool
   :: Text                    -- ^ name: Tool identifier (becomes pattern identifier)
   -> Text                    -- ^ description: Tool description (property)
-  -> Text                    -- ^ typeSignature: Gram path notation type signature (elements)
+  -> Pattern Subject         -- ^ typeSignature: Type signature as Pattern Subject element (no parsing)
   -> Either Text Tool        -- ^ Returns Right Tool or Left error message
-createTool name description typeSignature
+createTool name description typeSigPattern
   | T.null name = Left "Tool name cannot be empty"
   | T.null description = Left "Tool description cannot be empty"
-  | T.null typeSignature = Left "Tool type signature cannot be empty"
-  | otherwise = undefined -- TODO: Construct Pattern Subject with identifier=name, properties={description}, elements=typeSignature
+  | otherwise = do
+      -- Validate the pattern represents a valid type signature
+      _ <- validateTypeSignature typeSigPattern
+      
+      -- Construct Pattern Subject with Tool label, description property, and type signature as element
+      let subject = Subject
+            { identity = Symbol (T.unpack name)
+            , labels = Set.fromList ["Tool"]
+            , properties = Map.fromList [("description", VString (T.unpack description))]
+            }
+      Right $ patternWith subject [typeSigPattern]
 
 -- | Validate a tool pattern structure.
 --
 -- Checks that the tool has required fields and valid type signature.
 validateTool :: Tool -> Either Text ()
-validateTool tool = undefined -- TODO: Validate Pattern Subject structure and type signature
+validateTool tool = do
+  -- Check Tool label
+  unless ("Tool" `Set.member` labels (value tool)) $
+    Left "Tool must have 'Tool' label"
+  
+  -- Check non-empty name (pattern identifier)
+  let ident = identity (value tool)
+  case ident of
+    Symbol s | T.null (T.pack s) -> Left "Tool must have non-empty name (pattern identifier)"
+    Symbol _ -> return ()
+  
+  -- Check description property exists and is non-empty
+  let props = properties (value tool)
+  case Map.lookup "description" props of
+    Just (VString desc) | T.null (T.pack desc) -> Left "Tool description cannot be empty"
+    Just (VString _) -> return ()
+    _ -> Left "Tool must have 'description' property"
+  
+  -- Check type signature element exists
+  case elements tool of
+    [] -> Left "Tool must have type signature in elements"
+    [typeSigElem] -> validateTypeSignature typeSigElem
+    _ -> Left "Tool should have exactly one type signature element"
+
+-- | Helper function to convert Model to string representation.
+modelToString :: Model -> Text
+modelToString m = T.pack (show (modelProvider m)) <> "/" <> modelId m
 
 -- | Create a model identifier for a specific provider.
 --

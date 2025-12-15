@@ -81,39 +81,39 @@
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
 **Scenario Tests** (simulate user goal satisfaction):
-- [ ] T015 [P] [US1] Scenario test: Create tool with name, description, schema, and invocation function in tests/scenario/ToolCreationTest.hs
-- [ ] T016 [P] [US1] Scenario test: Verify tool can be accessed and its properties retrieved in tests/scenario/ToolCreationTest.hs
-- [ ] T017 [P] [US1] Scenario test: Verify tool parameter validation works correctly in tests/scenario/ToolCreationTest.hs
+- [X] T015 [P] [US1] Scenario test: Create tool with name, description, schema, and invocation function in tests/scenario/ToolCreationTest.hs
+- [X] T016 [P] [US1] Scenario test: Verify tool can be accessed and its properties retrieved in tests/scenario/ToolCreationTest.hs
+- [X] T017 [P] [US1] Scenario test: Verify tool parameter validation works correctly in tests/scenario/ToolCreationTest.hs
 
 **Unit Tests** (component correctness):
-- [ ] T018 [P] [US1] Unit test: Tool creation with gram type signature in tests/unit/ToolTest.hs
-- [ ] T019 [P] [US1] Unit test: ToolImpl creation with name, description, schema, invoke function in tests/unit/ToolTest.hs
-- [ ] T020 [P] [US1] Unit test: Tool accessors (toolName, toolDescription, toolTypeSignature, toolSchema) via lenses in tests/unit/ToolTest.hs
-- [ ] T021 [P] [US1] Unit test: ToolImpl accessors (toolImplName, toolImplDescription, toolImplSchema) in tests/unit/ToolTest.hs
-- [ ] T022 [P] [US1] Unit test: Schema validation for valid parameters in tests/unit/ToolTest.hs
-- [ ] T023 [P] [US1] Unit test: Schema validation for invalid parameters (wrong type, missing required) in tests/unit/ToolTest.hs
-- [ ] T024 [P] [US1] Unit test: Type signature parsing for simple signatures in tests/unit/ToolTest.hs
-- [ ] T025 [P] [US1] Unit test: Type signature to JSON schema conversion in tests/unit/ToolTest.hs
+- [X] T018 [P] [US1] Unit test: Tool creation with gram type signature in tests/unit/ToolTest.hs
+- [X] T019 [P] [US1] Unit test: ToolImpl creation with name, description, schema, invoke function in tests/unit/ToolTest.hs
+- [X] T020 [P] [US1] Unit test: Tool accessors (toolName, toolDescription, toolTypeSignature, toolSchema) via lenses in tests/unit/ToolTest.hs
+- [X] T021 [P] [US1] Unit test: ToolImpl accessors (toolImplName, toolImplDescription, toolImplSchema) in tests/unit/ToolTest.hs
+- [X] T022 [P] [US1] Unit test: Schema validation for valid parameters in tests/unit/ToolTest.hs
+- [X] T023 [P] [US1] Unit test: Schema validation for invalid parameters (wrong type, missing required) in tests/unit/ToolTest.hs
+- [X] T024 [P] [US1] Unit test: Type signature parsing for simple signatures in tests/unit/ToolTest.hs
+- [X] T025 [P] [US1] Unit test: Type signature to JSON schema conversion in tests/unit/ToolTest.hs
 
 ### Implementation for User Story 1 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T026 [P] [US1] Implement createTool function in src/PatternAgent/Language/Core.hs with name, description, typeSignature parameters (returns Tool Pattern)
-- [ ] T027 [US1] Implement createTool to auto-generate schema from type signature in src/PatternAgent/Language/Core.hs (uses Language.TypeSignature)
-- [ ] T028 [US1] Implement createToolImpl function in src/PatternAgent/Runtime/ToolLibrary.hs with name, description, schema, invoke parameters
-- [ ] T029 [P] [US1] Implement toolName lens in src/PatternAgent/Language/Core.hs
-- [ ] T030 [P] [US1] Implement toolDescription lens in src/PatternAgent/Language/Core.hs
-- [ ] T031 [P] [US1] Implement toolTypeSignature lens in src/PatternAgent/Language/Core.hs
-- [ ] T032 [P] [US1] Implement toolSchema lens in src/PatternAgent/Language/Core.hs
-- [ ] T033 [P] [US1] Implement toolImplName accessor in src/PatternAgent/Runtime/ToolLibrary.hs
-- [ ] T034 [P] [US1] Implement toolImplDescription accessor in src/PatternAgent/Runtime/ToolLibrary.hs
-- [ ] T035 [P] [US1] Implement toolImplSchema accessor in src/PatternAgent/Runtime/ToolLibrary.hs
-- [ ] T036 [US1] Add validation for non-empty name in createTool in src/PatternAgent/Language/Core.hs
-- [ ] T037 [US1] Add validation for non-empty description in createTool in src/PatternAgent/Language/Core.hs
-- [ ] T038 [US1] Add validation for valid gram type signature in createTool in src/PatternAgent/Language/Core.hs (uses Language.TypeSignature)
-- [ ] T039 [US1] Add validation for non-empty name in createToolImpl in src/PatternAgent/Runtime/ToolLibrary.hs
-- [ ] T040 [US1] Add validation for non-empty description in createToolImpl in src/PatternAgent/Runtime/ToolLibrary.hs
+- [X] T026 [P] [US1] Implement createTool function in src/PatternAgent/Language/Core.hs with name, description, typeSignature parameters (returns Tool Pattern)
+- [X] T027 [US1] Implement createTool to auto-generate schema from type signature in src/PatternAgent/Language/Core.hs (uses Language.TypeSignature)
+- [X] T028 [US1] Implement createToolImpl function in src/PatternAgent/Runtime/ToolLibrary.hs with name, description, schema, invoke parameters
+- [X] T029 [P] [US1] Implement toolName lens in src/PatternAgent/Language/Core.hs
+- [X] T030 [P] [US1] Implement toolDescription lens in src/PatternAgent/Language/Core.hs
+- [X] T031 [P] [US1] Implement toolTypeSignature lens in src/PatternAgent/Language/Core.hs
+- [X] T032 [P] [US1] Implement toolSchema lens in src/PatternAgent/Language/Core.hs
+- [X] T033 [P] [US1] Implement toolImplName accessor in src/PatternAgent/Runtime/ToolLibrary.hs
+- [X] T034 [P] [US1] Implement toolImplDescription accessor in src/PatternAgent/Runtime/ToolLibrary.hs
+- [X] T035 [P] [US1] Implement toolImplSchema accessor in src/PatternAgent/Runtime/ToolLibrary.hs
+- [X] T036 [US1] Add validation for non-empty name in createTool in src/PatternAgent/Language/Core.hs
+- [X] T037 [US1] Add validation for non-empty description in createTool in src/PatternAgent/Language/Core.hs
+- [X] T038 [US1] Add validation for valid gram type signature in createTool in src/PatternAgent/Language/Core.hs (uses Language.TypeSignature)
+- [X] T039 [US1] Add validation for non-empty name in createToolImpl in src/PatternAgent/Runtime/ToolLibrary.hs
+- [X] T040 [US1] Add validation for non-empty description in createToolImpl in src/PatternAgent/Runtime/ToolLibrary.hs
 - [ ] T041 [US1] Tool is Pattern Subject (no instances needed), ToolRuntime instances (Eq, Show, Generic, ToJSON, FromJSON) in src/PatternAgent/Language/Core.hs (optional optimization)
-- [ ] T042 [US1] Export Tool and related functions from PatternAgent.Language.Core module, ToolImpl and ToolLibrary from PatternAgent.Runtime.ToolLibrary module
+- [X] T042 [US1] Export Tool and related functions from PatternAgent.Language.Core module, ToolImpl and ToolLibrary from PatternAgent.Runtime.ToolLibrary module
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently. Developers can create tools with gram type signatures.
 
@@ -125,27 +125,29 @@
 
 **Independent Test**: Can be fully tested by verifying developers can add tools to an agent and the agent can access its tool list. This delivers the ability to configure agents with capabilities.
 
-### Tests for User Story 2 (Principle 3: Dual Testing Strategy) ⚠️
+### Tests for User Story 2 (Principle 3: Dual Testing Strategy) ✅
 
 **Scenario Tests**:
-- [ ] T043 [P] [US2] Scenario test: Add tool to agent and verify agent can access it in tests/scenario/AgentToolAssociationTest.hs
-- [ ] T044 [P] [US2] Scenario test: Add multiple tools to agent and verify all tools are accessible in tests/scenario/AgentToolAssociationTest.hs
-- [ ] T045 [P] [US2] Scenario test: Verify agent can see its available tools during request processing in tests/scenario/AgentToolAssociationTest.hs
+- [x] T043 [P] [US2] Scenario test: Add tool to agent and verify agent can access it in tests/scenario/AgentToolAssociationTest.hs
+- [x] T044 [P] [US2] Scenario test: Add multiple tools to agent and verify all tools are accessible in tests/scenario/AgentToolAssociationTest.hs
+- [x] T045 [P] [US2] Scenario test: Verify agent can see its available tools during request processing in tests/scenario/AgentToolAssociationTest.hs
+- [x] T043a [P] [US2] Scenario test: Purely conversational agent with no tools in tests/scenario/AgentToolAssociationTest.hs
+- [x] T043b [P] [US2] Scenario test: Agent with one tool (hello world) in tests/scenario/AgentToolAssociationTest.hs
 
 **Unit Tests**:
-- [ ] T046 [P] [US2] Unit test: Tool association with agents in tests/unit/AgentTest.hs
-- [ ] T047 [P] [US2] Unit test: Tool retrieval from agents in tests/unit/AgentTest.hs
-- [ ] T048 [P] [US2] Unit test: Tool name uniqueness validation within agent's tool list in tests/unit/AgentTest.hs
-- [ ] T049 [P] [US2] Unit test: Agent with zero tools (backward compatibility) in tests/unit/AgentTest.hs
+- [x] T046 [P] [US2] Unit test: Tool association with agents in tests/unit/AgentTest.hs
+- [x] T047 [P] [US2] Unit test: Tool retrieval from agents in tests/unit/AgentTest.hs
+- [x] T048 [P] [US2] Unit test: Tool name uniqueness validation within agent's tool list in tests/unit/AgentTest.hs
+- [x] T049 [P] [US2] Unit test: Agent with zero tools (backward compatibility) in tests/unit/AgentTest.hs
 
-### Implementation for User Story 2 (Principle 4: Expressiveness and Correctness)
+### Implementation for User Story 2 (Principle 4: Expressiveness and Correctness) ✅
 
-- [ ] T050 [US2] Add agentTools lens to Agent type in src/PatternAgent/Language/Core.hs (list of Tool, Pattern elements)
-- [ ] T051 [US2] Update createAgent function to accept tools parameter in src/PatternAgent/Language/Core.hs
-- [ ] T052 [US2] Implement agentTools lens in src/PatternAgent/Language/Core.hs
-- [ ] T053 [US2] Add validation for unique tool names within agentTools list in src/PatternAgent/Language/Core.hs
-- [ ] T054 [US2] Agent is Pattern Subject (no instances needed), AgentRuntime instances (Eq, Show, Generic, ToJSON, FromJSON) to include agentRuntimeTools field in src/PatternAgent/Language/Core.hs (optional optimization)
-- [ ] T055 [US2] Ensure agentTools defaults to empty list if not provided in src/PatternAgent/Language/Core.hs
+- [x] T050 [US2] Add agentTools lens to Agent type in src/PatternAgent/Language/Core.hs (list of Tool, Pattern elements)
+- [x] T051 [US2] Update createAgent function to accept tools parameter in src/PatternAgent/Language/Core.hs
+- [x] T052 [US2] Implement agentTools lens in src/PatternAgent/Language/Core.hs
+- [x] T053 [US2] Add validation for unique tool names within agentTools list in src/PatternAgent/Language/Core.hs
+- [x] T054 [US2] Agent is Pattern Subject (no instances needed), AgentRuntime instances (Eq, Show, Generic, ToJSON, FromJSON) to include agentRuntimeTools field in src/PatternAgent/Language/Core.hs (optional optimization)
+- [x] T055 [US2] Ensure agentTools defaults to empty list if not provided in src/PatternAgent/Language/Core.hs
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently. Developers can create tools and associate them with agents.
 
