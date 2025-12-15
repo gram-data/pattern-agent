@@ -23,12 +23,18 @@ module PatternAgent.Language.Serialization
 
 import PatternAgent.Language.Core (Agent, Tool)
 import Pattern (Pattern Subject)
+import qualified Gram
+import Gram.Parse (ParseError(..))
 import Data.Aeson (Value)
 import Data.Text (Text)
+import qualified Data.Text as T
 
 -- | Parse gram notation string to Pattern Subject.
+-- Uses gram-hs parser to convert gram notation text to Pattern Subject.
 parseGram :: Text -> Either Text (Pattern Subject)
-parseGram gram = undefined -- TODO: Implement gram notation parser
+parseGram gram = case Gram.fromGram (T.unpack gram) of
+  Left (ParseError err) -> Left $ T.pack err
+  Right pattern -> Right pattern
 
 -- | Parse agent from gram notation.
 parseAgent :: Text -> Either Text Agent
@@ -39,8 +45,9 @@ parseTool :: Text -> Either Text Tool
 parseTool gram = undefined -- TODO: Implement tool parsing
 
 -- | Convert Pattern Subject to gram notation string.
+-- Uses gram-hs serializer to convert Pattern Subject to gram notation text.
 toGram :: Pattern Subject -> Text
-toGram pattern = undefined -- TODO: Implement gram notation serializer
+toGram pattern = T.pack $ Gram.toGram pattern
 
 -- | Convert agent to gram notation.
 agentToGram :: Agent -> Text

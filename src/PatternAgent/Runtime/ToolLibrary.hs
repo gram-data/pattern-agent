@@ -25,14 +25,21 @@ module PatternAgent.Runtime.ToolLibrary
   , lookupTool
     -- * Tool Binding
   , bindTool
+    -- * Validation
+  , validateToolArgs
   ) where
 
 import PatternAgent.Language.Core (Tool)
-import Data.Aeson (Value)
+import Data.Aeson (Value(..), object, (.=))
+import qualified Data.Aeson.KeyMap as KM
+import qualified Data.Aeson.Key as K
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Vector as V
 import GHC.Generics (Generic)
+import Control.Monad (unless, when)
 
 -- | Tool implementation with executable function.
 --
@@ -95,3 +102,71 @@ bindTool
   -> ToolLibrary       -- ^ library: Tool library
   -> Maybe ToolImpl    -- ^ Bound tool implementation if found and matches
 bindTool tool library = undefined -- TODO: Implement tool binding with validation
+
+-- | Validate tool arguments against JSON schema.
+--
+-- Manual JSON schema validation for tool parameters.
+-- Validates required fields, field types, and structure.
+-- Returns Right with validated arguments or Left with error message.
+validateToolArgs
+  :: Value             -- ^ schema: JSON schema for tool parameters
+  -> Value             -- ^ args: Tool arguments to validate
+  -> Either Text Value -- ^ Validated arguments or error message
+validateToolArgs schema args = case (schema, args) of
+  (Object schemaMap, Object argMap) -> do
+    -- Extract properties and required fields from schema
+    let properties = case KM.lookup (K.fromText "properties") schemaMap of
+          Just (Object props) -> props
+          _ -> KM.empty
+    let required = case KM.lookup (K.fromText "required") schemaMap of
+          Just (Array req) -> mapMaybe extractString (V.toList req)
+          _ -> []
+    
+    -- Check all required fields are present
+    forM_ required $ \reqField -> do
+      let key = K.fromText reqField
+      unless (KM.member key argMap) $
+        Left $ "Missing required field: " <> reqField
+    
+    -- Validate field types
+    KM.foldlWithKey (\acc key val -> do
+      validated <- acc
+      let fieldName = T.pack $ K.toText key
+      case KM.lookup key properties of
+        Just fieldSchema -> do
+          validateFieldType fieldSchema val
+          return validated
+        Nothing -> Left $ "Unknown field: " <> fieldName
+      ) (Right args) argMap
+    
+  (_, Object _) -> Left "Schema must be an object"
+  (_, _) -> Left "Arguments must be an object"
+  where
+    validateFieldType fieldSchema fieldValue = case fieldSchema of
+      Object fieldMap -> case KM.lookup (K.fromText "type") fieldMap of
+        Just (String t) -> validateType t fieldValue
+        _ -> Right ()  -- No type specified, allow it
+      _ -> Right ()  -- Not an object schema, allow it
+    
+    validateType expectedType fieldValue = case (expectedType, fieldValue) of
+      ("string", String _) -> Right ()
+      ("string", _) -> Left "Field must be a string"
+      ("integer", Number _) -> Right ()  -- JSON numbers can be integers
+      ("integer", _) -> Left "Field must be an integer"
+      ("number", Number _) -> Right ()
+      ("number", _) -> Left "Field must be a number"
+      ("boolean", Bool _) -> Right ()
+      ("boolean", _) -> Left "Field must be a boolean"
+      ("object", Object _) -> Right ()
+      ("object", _) -> Left "Field must be an object"
+      ("array", Array _) -> Right ()
+      ("array", _) -> Left "Field must be an array"
+      _ -> Right ()  -- Unknown type, allow it
+    
+    extractString (String s) = Just s
+    extractString _ = Nothing
+    
+    forM_ [] _ = Right ()
+    forM_ (x:xs) f = case f x of
+      Left err -> Left err
+      Right _ -> forM_ xs f

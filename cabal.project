@@ -1,3 +1,5 @@
 packages: .
         ../gram-hs/libs/pattern
+        ../gram-hs/libs/subject
+        ../gram-hs/libs/gram
 

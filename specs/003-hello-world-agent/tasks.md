@@ -55,16 +55,16 @@
 
 **Note**: Phase 0.5 (Tool Description Design) is already complete - gram notation format designed, tool-specification-gram.md and type-signature-grammar.md exist.
 
-- [ ] T005 [P] Define Tool type alias in src/PatternAgent/Language/Core.hs (type Tool = Pattern Subject) with lenses: toolName, toolDescription, toolTypeSignature, toolSchema
-- [ ] T006 [P] Define ToolImpl type in src/PatternAgent/Runtime/ToolLibrary.hs with fields: toolImplName, toolImplDescription, toolImplSchema, toolImplInvoke
-- [ ] T007 [P] Define ToolLibrary type in src/PatternAgent/Runtime/ToolLibrary.hs with libraryTools field (Map Text ToolImpl)
-- [ ] T008 [P] Define TypeSignature parsed representation type in src/PatternAgent/Language/TypeSignature.hs for parsed gram type signatures
-- [ ] T009 [P] Implement emptyToolLibrary function in src/PatternAgent/Runtime/ToolLibrary.hs
-- [ ] T010 [P] Implement parseTypeSignature function in src/PatternAgent/Language/TypeSignature.hs to parse gram type signatures in curried form (e.g., "(personName::Text)==>(::String)")
-- [ ] T011 [P] Implement typeSignatureToJSONSchema function in src/PatternAgent/Language/TypeSignature.hs to convert parsed type signatures to JSON schemas
-- [ ] T012 [P] Implement validateToolArgs function in src/PatternAgent/Runtime/ToolLibrary.hs for manual JSON schema validation
-- [ ] T013 [P] Define MessageRole with FunctionRole constructor in src/PatternAgent/Runtime/Context.hs for tool result messages
-- [ ] T014 [P] Update Message type in src/PatternAgent/Runtime/Context.hs to support FunctionRole messages with tool name
+- [X] T005 [P] Define Tool type alias in src/PatternAgent/Language/Core.hs (type Tool = Pattern Subject) with lenses: toolName, toolDescription, toolTypeSignature, toolSchema
+- [X] T006 [P] Define ToolImpl type in src/PatternAgent/Runtime/ToolLibrary.hs with fields: toolImplName, toolImplDescription, toolImplSchema, toolImplInvoke
+- [X] T007 [P] Define ToolLibrary type in src/PatternAgent/Runtime/ToolLibrary.hs with libraryTools field (Map Text ToolImpl)
+- [X] T008 [P] Define TypeSignature parsed representation type in src/PatternAgent/Language/TypeSignature.hs for parsed gram type signatures
+- [X] T009 [P] Implement emptyToolLibrary function in src/PatternAgent/Runtime/ToolLibrary.hs
+- [X] T010 [P] ~~Implement parseTypeSignature function~~ - CANCELLED: gram-hs already parses gram files; type signatures are Pattern elements, use extractTypeSignatureFromPattern instead
+- [X] T011 [P] Implement typeSignatureToJSONSchema function in src/PatternAgent/Language/TypeSignature.hs to convert parsed type signatures to JSON schemas
+- [X] T012 [P] Implement validateToolArgs function in src/PatternAgent/Runtime/ToolLibrary.hs for manual JSON schema validation
+- [X] T013 [P] Define MessageRole with FunctionRole constructor in src/PatternAgent/Runtime/Context.hs for tool result messages
+- [X] T014 [P] Update Message type in src/PatternAgent/Runtime/Context.hs to support FunctionRole messages with tool name
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 

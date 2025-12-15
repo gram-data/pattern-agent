@@ -34,11 +34,18 @@ module PatternAgent.Language.Core
   , createModel
   ) where
 
-import Control.Lens (Lens')
+import Control.Lens (Lens', lens, view, set)
 import Data.Aeson (Value)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Pattern (Pattern Subject)
+import Pattern (Pattern(..))
+import Pattern.Core (value, elements)
+import Subject.Core (Subject(..), Symbol(..))
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
+import Subject.Value (Value(..))
+import qualified Gram
+import PatternAgent.Language.TypeSignature (typeSignatureToJSONSchema, extractTypeSignatureFromPattern)
 
 -- | Model provider enumeration.
 data Provider
@@ -90,19 +97,52 @@ agentTools = undefined -- TODO: Implement using Pattern Subject elements access
 
 -- | Lens for tool name (pattern identifier).
 toolName :: Lens' Tool Text
-toolName = undefined -- TODO: Implement using Pattern Subject identifier access
+toolName = lens getter setter
+  where
+    getter p = case identity (value p) of
+      Symbol s -> T.pack s
+    setter p n = p { value = (value p) { identity = Symbol (T.unpack n) } }
 
 -- | Lens for tool description (property).
 toolDescription :: Lens' Tool Text
-toolDescription = undefined -- TODO: Implement using Pattern Subject property access
+toolDescription = lens getter setter
+  where
+    getter p = case Map.lookup "description" (properties (value p)) of
+      Just (VString s) -> T.pack s
+      _ -> T.empty
+    setter p desc = p
+      { value = (value p)
+          { properties = Map.insert "description" (VString (T.unpack desc)) (properties (value p))
+          }
+      }
 
 -- | Lens for tool type signature (gram path notation in pattern elements).
+-- Extracts the type signature path from pattern elements and serializes to text.
 toolTypeSignature :: Lens' Tool Text
-toolTypeSignature = undefined -- TODO: Implement using Pattern Subject elements access
+toolTypeSignature = lens getter setter
+  where
+    getter p = case elements p of
+      [] -> T.empty
+      [typeSigElem] -> T.pack $ Gram.toGram typeSigElem
+      _ -> T.empty  -- Multiple elements not expected for type signature
+    setter p sig = p
+      { elements = case Gram.fromGram (T.unpack sig) of
+          Right parsed -> [parsed]
+          Left _ -> elements p  -- Keep existing if parse fails
+      }
 
 -- | Lens for tool JSON schema (generated from type signature, not stored).
+-- Extracts type signature from pattern elements and converts to JSON schema.
 toolSchema :: Lens' Tool Value
-toolSchema = undefined -- TODO: Implement using Pattern Subject, generate from type signature
+toolSchema = lens getter setter
+  where
+    getter p = case elements p of
+      [] -> object ["type" .= ("object" :: Text), "properties" .= object []]
+      [typeSigElem] -> case extractTypeSignatureFromPattern typeSigElem of
+        Right typeSig -> typeSignatureToJSONSchema typeSig
+        Left _ -> object ["type" .= ("object" :: Text), "properties" .= object []]  -- Default empty schema on error
+      _ -> object ["type" .= ("object" :: Text), "properties" .= object []]  -- Multiple elements not expected
+    setter p _ = p  -- Schema is computed, cannot be set directly
 
 -- | Create an agent from components.
 --
