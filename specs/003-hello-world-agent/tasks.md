@@ -19,14 +19,31 @@
 - **Single project**: `src/`, `tests/` at repository root
 - Paths shown below assume single project structure from plan.md
 
+## Module Structure (Language vs Runtime)
+
+**Language Modules** (portable specification):
+- `src/PatternAgent/Language/Core.hs` - Agent, Tool as Pattern Subject, lenses, creation
+- `src/PatternAgent/Language/Schema.hs` - Schema validation
+- `src/PatternAgent/Language/TypeSignature.hs` - Type signature parsing & JSON schema generation
+- `src/PatternAgent/Language/Serialization.hs` - Gram ↔ Pattern conversion
+
+**Runtime Modules** (Haskell-specific implementation):
+- `src/PatternAgent/Runtime/Execution.hs` - Execution engine (interpretation model as default)
+- `src/PatternAgent/Runtime/ToolLibrary.hs` - ToolImpl, ToolLibrary, tool binding
+- `src/PatternAgent/Runtime/LLM.hs` - LLM API client
+- `src/PatternAgent/Runtime/Context.hs` - ConversationContext
+
+**Note**: Execution uses interpretation model by default (direct Pattern execution via lenses). Optional compilation to AgentRuntime is a future optimization.
+
 ## Phase 1: Setup (Shared Infrastructure)
 
 **Purpose**: Project initialization and dependency setup
 
 - [X] T001 Update pattern-agent.cabal with any additional dependencies if needed (verify existing dependencies are sufficient)
 - [X] T002 [P] Verify test directory structure exists: tests/unit/ and tests/scenario/
-- [X] T003 [P] Create new module: src/PatternAgent/Tool.hs for tool system
-- [X] T004 [P] Create new module: src/PatternAgent/HelloWorld.hs for hello world example
+- [X] T003 [P] Create Language module structure: src/PatternAgent/Language/ (Core, Schema, TypeSignature, Serialization)
+- [X] T004 [P] Create Runtime module structure: src/PatternAgent/Runtime/ (Execution, ToolLibrary, LLM, Context)
+- [X] T004b [P] Create new module: src/PatternAgent/HelloWorld.hs for hello world example
 
 ---
 
@@ -38,16 +55,16 @@
 
 **Note**: Phase 0.5 (Tool Description Design) is already complete - gram notation format designed, tool-specification-gram.md and type-signature-grammar.md exist.
 
-- [ ] T005 [P] Define Tool type alias in src/PatternAgent/Tool.hs (type Tool = Pattern Subject) with lenses: toolName, toolDescription, toolTypeSignature, toolSchema
-- [ ] T006 [P] Define ToolImpl type in src/PatternAgent/Tool.hs with fields: toolImplName, toolImplDescription, toolImplSchema, toolImplInvoke
-- [ ] T007 [P] Define ToolLibrary type in src/PatternAgent/Tool.hs with libraryTools field (Map Text ToolImpl)
-- [ ] T008 [P] Define TypeSignature parsed representation type in src/PatternAgent/Tool.hs for parsed gram type signatures
-- [ ] T009 [P] Implement emptyToolLibrary function in src/PatternAgent/Tool.hs
-- [ ] T010 [P] Implement parseTypeSignature function in src/PatternAgent/Tool.hs to parse gram type signatures in curried form (e.g., "(personName::Text)==>(::String)")
-- [ ] T011 [P] Implement typeSignatureToJSONSchema function in src/PatternAgent/Tool.hs to convert parsed type signatures to JSON schemas
-- [ ] T012 [P] Implement validateToolArgs function in src/PatternAgent/Tool.hs for manual JSON schema validation
-- [ ] T013 [P] Define MessageRole with FunctionRole constructor in src/PatternAgent/Context.hs for tool result messages
-- [ ] T014 [P] Update Message type in src/PatternAgent/Context.hs to support FunctionRole messages with tool name
+- [ ] T005 [P] Define Tool type alias in src/PatternAgent/Language/Core.hs (type Tool = Pattern Subject) with lenses: toolName, toolDescription, toolTypeSignature, toolSchema
+- [ ] T006 [P] Define ToolImpl type in src/PatternAgent/Runtime/ToolLibrary.hs with fields: toolImplName, toolImplDescription, toolImplSchema, toolImplInvoke
+- [ ] T007 [P] Define ToolLibrary type in src/PatternAgent/Runtime/ToolLibrary.hs with libraryTools field (Map Text ToolImpl)
+- [ ] T008 [P] Define TypeSignature parsed representation type in src/PatternAgent/Language/TypeSignature.hs for parsed gram type signatures
+- [ ] T009 [P] Implement emptyToolLibrary function in src/PatternAgent/Runtime/ToolLibrary.hs
+- [ ] T010 [P] Implement parseTypeSignature function in src/PatternAgent/Language/TypeSignature.hs to parse gram type signatures in curried form (e.g., "(personName::Text)==>(::String)")
+- [ ] T011 [P] Implement typeSignatureToJSONSchema function in src/PatternAgent/Language/TypeSignature.hs to convert parsed type signatures to JSON schemas
+- [ ] T012 [P] Implement validateToolArgs function in src/PatternAgent/Runtime/ToolLibrary.hs for manual JSON schema validation
+- [ ] T013 [P] Define MessageRole with FunctionRole constructor in src/PatternAgent/Runtime/Context.hs for tool result messages
+- [ ] T014 [P] Update Message type in src/PatternAgent/Runtime/Context.hs to support FunctionRole messages with tool name
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -80,23 +97,23 @@
 
 ### Implementation for User Story 1 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T026 [P] [US1] Implement createTool function in src/PatternAgent/Tool.hs with name, description, typeSignature parameters (returns Tool Pattern)
-- [ ] T027 [US1] Implement createTool to auto-generate schema from type signature in src/PatternAgent/Tool.hs
-- [ ] T028 [US1] Implement createToolImpl function in src/PatternAgent/Tool.hs with name, description, schema, invoke parameters
-- [ ] T029 [P] [US1] Implement toolName lens in src/PatternAgent/Tool.hs
-- [ ] T030 [P] [US1] Implement toolDescription lens in src/PatternAgent/Tool.hs
-- [ ] T031 [P] [US1] Implement toolTypeSignature lens in src/PatternAgent/Tool.hs
-- [ ] T032 [P] [US1] Implement toolSchema lens in src/PatternAgent/Tool.hs
-- [ ] T033 [P] [US1] Implement toolImplName accessor in src/PatternAgent/Tool.hs
-- [ ] T034 [P] [US1] Implement toolImplDescription accessor in src/PatternAgent/Tool.hs
-- [ ] T035 [P] [US1] Implement toolImplSchema accessor in src/PatternAgent/Tool.hs
-- [ ] T036 [US1] Add validation for non-empty name in createTool in src/PatternAgent/Tool.hs
-- [ ] T037 [US1] Add validation for non-empty description in createTool in src/PatternAgent/Tool.hs
-- [ ] T038 [US1] Add validation for valid gram type signature in createTool in src/PatternAgent/Tool.hs
-- [ ] T039 [US1] Add validation for non-empty name in createToolImpl in src/PatternAgent/Tool.hs
-- [ ] T040 [US1] Add validation for non-empty description in createToolImpl in src/PatternAgent/Tool.hs
-- [ ] T041 [US1] Tool is Pattern Subject (no instances needed), ToolRuntime instances (Eq, Show, Generic, ToJSON, FromJSON) in src/PatternAgent/Tool.hs
-- [ ] T042 [US1] Export Tool, ToolImpl, ToolRuntime, and related functions from PatternAgent.Tool module
+- [ ] T026 [P] [US1] Implement createTool function in src/PatternAgent/Language/Core.hs with name, description, typeSignature parameters (returns Tool Pattern)
+- [ ] T027 [US1] Implement createTool to auto-generate schema from type signature in src/PatternAgent/Language/Core.hs (uses Language.TypeSignature)
+- [ ] T028 [US1] Implement createToolImpl function in src/PatternAgent/Runtime/ToolLibrary.hs with name, description, schema, invoke parameters
+- [ ] T029 [P] [US1] Implement toolName lens in src/PatternAgent/Language/Core.hs
+- [ ] T030 [P] [US1] Implement toolDescription lens in src/PatternAgent/Language/Core.hs
+- [ ] T031 [P] [US1] Implement toolTypeSignature lens in src/PatternAgent/Language/Core.hs
+- [ ] T032 [P] [US1] Implement toolSchema lens in src/PatternAgent/Language/Core.hs
+- [ ] T033 [P] [US1] Implement toolImplName accessor in src/PatternAgent/Runtime/ToolLibrary.hs
+- [ ] T034 [P] [US1] Implement toolImplDescription accessor in src/PatternAgent/Runtime/ToolLibrary.hs
+- [ ] T035 [P] [US1] Implement toolImplSchema accessor in src/PatternAgent/Runtime/ToolLibrary.hs
+- [ ] T036 [US1] Add validation for non-empty name in createTool in src/PatternAgent/Language/Core.hs
+- [ ] T037 [US1] Add validation for non-empty description in createTool in src/PatternAgent/Language/Core.hs
+- [ ] T038 [US1] Add validation for valid gram type signature in createTool in src/PatternAgent/Language/Core.hs (uses Language.TypeSignature)
+- [ ] T039 [US1] Add validation for non-empty name in createToolImpl in src/PatternAgent/Runtime/ToolLibrary.hs
+- [ ] T040 [US1] Add validation for non-empty description in createToolImpl in src/PatternAgent/Runtime/ToolLibrary.hs
+- [ ] T041 [US1] Tool is Pattern Subject (no instances needed), ToolRuntime instances (Eq, Show, Generic, ToJSON, FromJSON) in src/PatternAgent/Language/Core.hs (optional optimization)
+- [ ] T042 [US1] Export Tool and related functions from PatternAgent.Language.Core module, ToolImpl and ToolLibrary from PatternAgent.Runtime.ToolLibrary module
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently. Developers can create tools with gram type signatures.
 
@@ -123,12 +140,12 @@
 
 ### Implementation for User Story 2 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T050 [US2] Add agentTools lens to Agent type in src/PatternAgent/Agent.hs (list of Tool, Pattern elements)
-- [ ] T051 [US2] Update createAgent function to accept tools parameter in src/PatternAgent/Agent.hs
-- [ ] T052 [US2] Implement agentTools lens in src/PatternAgent/Agent.hs
-- [ ] T053 [US2] Add validation for unique tool names within agentTools list in src/PatternAgent/Agent.hs
-- [ ] T054 [US2] Agent is Pattern Subject (no instances needed), AgentRuntime instances (Eq, Show, Generic, ToJSON, FromJSON) to include agentRuntimeTools field in src/PatternAgent/Agent.hs
-- [ ] T055 [US2] Ensure backward compatibility: agentTools defaults to empty list if not provided in src/PatternAgent/Agent.hs
+- [ ] T050 [US2] Add agentTools lens to Agent type in src/PatternAgent/Language/Core.hs (list of Tool, Pattern elements)
+- [ ] T051 [US2] Update createAgent function to accept tools parameter in src/PatternAgent/Language/Core.hs
+- [ ] T052 [US2] Implement agentTools lens in src/PatternAgent/Language/Core.hs
+- [ ] T053 [US2] Add validation for unique tool names within agentTools list in src/PatternAgent/Language/Core.hs
+- [ ] T054 [US2] Agent is Pattern Subject (no instances needed), AgentRuntime instances (Eq, Show, Generic, ToJSON, FromJSON) to include agentRuntimeTools field in src/PatternAgent/Language/Core.hs (optional optimization)
+- [ ] T055 [US2] Ensure agentTools defaults to empty list if not provided in src/PatternAgent/Language/Core.hs
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently. Developers can create tools and associate them with agents.
 
@@ -160,25 +177,25 @@
 
 ### Implementation for User Story 3 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T068 [P] [US3] Implement registerTool function in src/PatternAgent/Tool.hs to register tool in ToolLibrary
-- [ ] T069 [P] [US3] Implement lookupTool function in src/PatternAgent/Tool.hs to lookup tool by name
-- [ ] T070 [P] [US3] Implement bindTool function in src/PatternAgent/Tool.hs to bind Tool (Pattern) to ToolImpl from library
-- [ ] T071 [US3] Implement bindAgentTools function in src/PatternAgent/Execution.hs to bind all agent tools to ToolImpl implementations
-- [ ] T072 [US3] Implement detectToolCall function in src/PatternAgent/Execution.hs to detect function_call in LLM responses
-- [ ] T073 [US3] Implement invokeTool function in src/PatternAgent/Execution.hs to invoke tool with validated parameters
-- [ ] T074 [US3] Update LLM.hs to add tool definitions (from Tools) to OpenAI API requests in src/PatternAgent/LLM.hs
-- [ ] T075 [US3] Update LLM.hs to parse function_call from OpenAI API responses in src/PatternAgent/LLM.hs
-- [ ] T076 [US3] Implement iterative execution loop in executeAgentWithLibrary in src/PatternAgent/Execution.hs (detect tool call → validate → invoke → send result to LLM → get final response)
-- [ ] T077 [US3] Add maximum iteration limit (10) to prevent infinite loops in executeAgentWithLibrary in src/PatternAgent/Execution.hs
-- [ ] T078 [US3] Add tool invocation tracking to AgentResponse.responseToolsUsed in src/PatternAgent/Execution.hs
-- [ ] T079 [US3] Add FunctionRole messages to conversation context for tool results in src/PatternAgent/Execution.hs
-- [ ] T080 [US3] Implement executeAgentWithLibrary function signature in src/PatternAgent/Execution.hs (Agent, Text, ConversationContext, ToolLibrary → IO (Either AgentError AgentResponse))
-- [ ] T081 [US3] Add error handling for tool not found in library in executeAgentWithLibrary in src/PatternAgent/Execution.hs
-- [ ] T082 [US3] Add error handling for tool binding failures in executeAgentWithLibrary in src/PatternAgent/Execution.hs
-- [ ] T083 [US3] Add error handling for tool parameter validation failures in executeAgentWithLibrary in src/PatternAgent/Execution.hs
-- [ ] T084 [US3] Add error handling for tool execution exceptions in executeAgentWithLibrary in src/PatternAgent/Execution.hs
-- [ ] T085 [US3] Add error handling for malformed tool call requests from LLM in executeAgentWithLibrary in src/PatternAgent/Execution.hs
-- [ ] T086 [US3] Export executeAgentWithLibrary and related functions from PatternAgent.Execution module
+- [ ] T068 [P] [US3] Implement registerTool function in src/PatternAgent/Runtime/ToolLibrary.hs to register tool in ToolLibrary
+- [ ] T069 [P] [US3] Implement lookupTool function in src/PatternAgent/Runtime/ToolLibrary.hs to lookup tool by name
+- [ ] T070 [P] [US3] Implement bindTool function in src/PatternAgent/Runtime/ToolLibrary.hs to bind Tool (Pattern) to ToolImpl from library
+- [ ] T071 [US3] Implement bindAgentTools function in src/PatternAgent/Runtime/Execution.hs to bind all agent tools to ToolImpl implementations
+- [ ] T072 [US3] Implement detectToolCall function in src/PatternAgent/Runtime/Execution.hs to detect function_call in LLM responses
+- [ ] T073 [US3] Implement invokeTool function in src/PatternAgent/Runtime/Execution.hs to invoke tool with validated parameters
+- [ ] T074 [US3] Update Runtime.LLM to add tool definitions (from Tools) to OpenAI API requests in src/PatternAgent/Runtime/LLM.hs
+- [ ] T075 [US3] Update Runtime.LLM to parse function_call from OpenAI API responses in src/PatternAgent/Runtime/LLM.hs
+- [ ] T076 [US3] Implement iterative execution loop in executeAgentWithLibrary in src/PatternAgent/Runtime/Execution.hs (detect tool call → validate → invoke → send result to LLM → get final response)
+- [ ] T077 [US3] Add maximum iteration limit (10) to prevent infinite loops in executeAgentWithLibrary in src/PatternAgent/Runtime/Execution.hs
+- [ ] T078 [US3] Add tool invocation tracking to AgentResponse.responseToolsUsed in src/PatternAgent/Runtime/Execution.hs
+- [ ] T079 [US3] Add FunctionRole messages to conversation context for tool results in src/PatternAgent/Runtime/Execution.hs
+- [ ] T080 [US3] Implement executeAgentWithLibrary function signature in src/PatternAgent/Runtime/Execution.hs (Agent, Text, ConversationContext, ToolLibrary → IO (Either AgentError AgentResponse))
+- [ ] T081 [US3] Add error handling for tool not found in library in executeAgentWithLibrary in src/PatternAgent/Runtime/Execution.hs
+- [ ] T082 [US3] Add error handling for tool binding failures in executeAgentWithLibrary in src/PatternAgent/Runtime/Execution.hs
+- [ ] T083 [US3] Add error handling for tool parameter validation failures in executeAgentWithLibrary in src/PatternAgent/Runtime/Execution.hs
+- [ ] T084 [US3] Add error handling for tool execution exceptions in executeAgentWithLibrary in src/PatternAgent/Runtime/Execution.hs
+- [ ] T085 [US3] Add error handling for malformed tool call requests from LLM in executeAgentWithLibrary in src/PatternAgent/Runtime/Execution.hs
+- [ ] T086 [US3] Export executeAgentWithLibrary and related functions from PatternAgent.Runtime.Execution module
 
 **Checkpoint**: At this point, User Stories 1, 2, AND 3 should work independently. Developers can create tools, associate them with agents, and execute agents with tool support.
 
@@ -235,10 +252,10 @@
 
 ### Implementation for User Story 5 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T105 [US5] Verify conversation context includes FunctionRole messages for tool results in src/PatternAgent/Execution.hs
-- [ ] T106 [US5] Verify conversation context is properly passed through iterative execution loop in src/PatternAgent/Execution.hs
-- [ ] T107 [US5] Verify LLM API requests include full conversation history with tool invocations in src/PatternAgent/LLM.hs
-- [ ] T108 [US5] Verify context updates include user message, assistant message with tool call, function message with tool result, and final assistant response in src/PatternAgent/Execution.hs
+- [ ] T105 [US5] Verify conversation context includes FunctionRole messages for tool results in src/PatternAgent/Runtime/Execution.hs
+- [ ] T106 [US5] Verify conversation context is properly passed through iterative execution loop in src/PatternAgent/Runtime/Execution.hs
+- [ ] T107 [US5] Verify LLM API requests include full conversation history with tool invocations in src/PatternAgent/Runtime/LLM.hs
+- [ ] T108 [US5] Verify context updates include user message, assistant message with tool call, function message with tool result, and final assistant response in src/PatternAgent/Runtime/Execution.hs
 
 **Checkpoint**: At this point, all user stories should work independently. Developers can create agents with tools, execute them, and maintain conversation context with tool usage.
 
@@ -248,15 +265,15 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T109 [P] Add comprehensive error handling for all edge cases in src/PatternAgent/Execution.hs (tool timeout scenarios, multiple simultaneous tool calls, agent with no tools but LLM requests tool call)
-- [ ] T110 [P] Update module exports in src/PatternAgent/Tool.hs, Execution.hs, Agent.hs, HelloWorld.hs
-- [ ] T111 [P] Add Haddock documentation to all public functions in src/PatternAgent/Tool.hs, Execution.hs, Agent.hs, HelloWorld.hs
+- [ ] T109 [P] Add comprehensive error handling for all edge cases in src/PatternAgent/Runtime/Execution.hs (tool timeout scenarios, multiple simultaneous tool calls, agent with no tools but LLM requests tool call)
+- [ ] T110 [P] Update module exports in Language modules (Core, Schema, TypeSignature, Serialization), Runtime modules (Execution, ToolLibrary, LLM, Context), and HelloWorld.hs
+- [ ] T111 [P] Add Haddock documentation to all public functions in Language modules, Runtime modules, and HelloWorld.hs
 - [ ] T112 [P] Run quickstart.md examples validation
 - [ ] T113 [P] Additional unit tests for edge cases in tests/unit/ (tool with no parameters, tool with optional parameters, tool with nested record parameters)
 - [ ] T114 [P] Additional scenario tests for complex workflows in tests/scenario/ (multiple tools, tool chaining, error recovery)
 - [ ] T115 [P] Code cleanup and refactoring across all modules
-- [ ] T116 [P] Update pattern-agent.cabal exposed-modules list to include PatternAgent.Tool and PatternAgent.HelloWorld
-- [ ] T117 [P] Verify backward compatibility: tool-free agents still work correctly
+- [ ] T116 [P] Update pattern-agent.cabal exposed-modules list to include all Language modules, Runtime modules, and PatternAgent.HelloWorld
+- [ ] T117 [P] Verify tool-free agents still work correctly (agents with empty tools list)
 
 ---
 
@@ -318,10 +335,10 @@ Task: "Unit test: Type signature parsing for simple signatures in tests/unit/Too
 Task: "Unit test: Type signature to JSON schema conversion in tests/unit/ToolTest.hs"
 
 # Launch all types for User Story 1 together:
-Task: "Define Tool type alias in src/PatternAgent/Tool.hs (type Tool = Pattern Subject) with lenses: toolName, toolDescription, toolTypeSignature, toolSchema"
-Task: "Define ToolImpl type in src/PatternAgent/Tool.hs with fields: toolImplName, toolImplDescription, toolImplSchema, toolImplInvoke"
-Task: "Define ToolLibrary type in src/PatternAgent/Tool.hs with libraryTools field (Map Text Tool)"
-Task: "Define TypeSignature parsed representation type in src/PatternAgent/Tool.hs for parsed gram type signatures"
+Task: "Define Tool type alias in src/PatternAgent/Language/Core.hs (type Tool = Pattern Subject) with lenses: toolName, toolDescription, toolTypeSignature, toolSchema"
+Task: "Define ToolImpl type in src/PatternAgent/Runtime/ToolLibrary.hs with fields: toolImplName, toolImplDescription, toolImplSchema, toolImplInvoke"
+Task: "Define ToolLibrary type in src/PatternAgent/Runtime/ToolLibrary.hs with libraryTools field (Map Text ToolImpl)"
+Task: "Define TypeSignature parsed representation type in src/PatternAgent/Language/TypeSignature.hs for parsed gram type signatures"
 ```
 
 ---
