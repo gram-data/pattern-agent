@@ -10,6 +10,9 @@ module PatternAgent.Language.TypeSignature
     extractTypeSignatureFromPattern
   , TypeSignature(..)
   , Parameter(..)
+    -- * Programmatic Construction
+  , createTypeNode
+  , createFunctionTypePattern
     -- * JSON Schema Generation
   , typeSignatureToJSONSchema
   , parameterToJSONSchema
@@ -17,13 +20,15 @@ module PatternAgent.Language.TypeSignature
   , validateTypeSignature
   ) where
 
-import Data.Aeson (Value(..), object, (.=))
+import Data.Aeson (Value(..), object, (.=), toJSON)
+import qualified Data.Aeson.Key as Key
 import Data.Text (Text)
 import qualified Data.Text as T
-import Pattern (Pattern Subject)
-import Pattern.Core (value, elements)
+import qualified Data.Vector as V
+import Pattern (Pattern(..))
+import Pattern.Core (value, elements, patternWith)
 import Subject.Core (Subject(..), Symbol(..))
-import Subject.Value (Value(..))
+import qualified Subject.Value as SubjectValue
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 
@@ -64,11 +69,11 @@ typeSignatureToJSONSchema (TypeSignature params returnType) =
   object
     [ "type" .= ("object" :: Text)
     , "properties" .= object (mapMaybe paramToProperty params)
-    , "required" .= Array (map String $ requiredParamNames params)
+    , "required" .= Array (V.fromList $ map (toJSON . T.pack) $ requiredParamNames params)
     ]
   where
     paramToProperty (Parameter (Just name) typeLabel defaultVal) =
-      Just (T.unpack name, parameterToJSONSchema (Parameter (Just name) typeLabel defaultVal))
+      Just (Key.fromString (T.unpack name), parameterToJSONSchema (Parameter (Just name) typeLabel defaultVal))
     paramToProperty _ = Nothing
     
     requiredParamNames = mapMaybe (\(Parameter name _ defaultVal) ->
@@ -84,11 +89,9 @@ typeSignatureToJSONSchema (TypeSignature params returnType) =
 -- | Convert a parameter to JSON schema property.
 parameterToJSONSchema :: Parameter -> Value
 parameterToJSONSchema (Parameter _ typeLabel defaultVal) =
-  let baseSchema = object ["type" .= typeLabelToJSONType typeLabel]
-      withDefault = case defaultVal of
-        Just val -> baseSchema <> object ["default" .= val]
-        Nothing -> baseSchema
-  in withDefault
+  case defaultVal of
+    Just val -> object ["type" .= typeLabelToJSONType typeLabel, "default" .= val]
+    Nothing -> object ["type" .= typeLabelToJSONType typeLabel]
 
 -- | Convert gram type label to JSON Schema type string.
 typeLabelToJSONType :: Text -> Text
@@ -100,6 +103,69 @@ typeLabelToJSONType label
   | label == "Object" = "object"
   | label == "Array" = "array"
   | otherwise = "string" -- Default to string for unknown types
+
+-- | Create a type node pattern programmatically.
+--
+-- Creates a Pattern Subject representing a type node (parameter or return type).
+-- For universal type nodes (like String, Int), use conventional identifiers
+-- so all functions sharing the same return type reference the same node.
+--
+-- Examples:
+-- - Parameter node: createTypeNode (Just "personName") "Text" (Just (VString "world"))
+-- - Return type node: createTypeNode Nothing "String" Nothing
+createTypeNode
+  :: Maybe Text        -- ^ Parameter name (Nothing for return types or anonymous)
+  -> Text              -- ^ Type label (Text, String, Int, etc.)
+  -> Maybe SubjectValue.Value  -- ^ Default value (for optional parameters, using Subject.Value)
+  -> Pattern Subject   -- ^ Pattern Subject representing the type node
+createTypeNode paramName typeLabel defaultVal =
+  let identity = case paramName of
+        Just name -> Symbol (T.unpack name)
+        Nothing -> Symbol ""  -- Anonymous - will need identifier for uniqueness
+      labels = Set.fromList [T.unpack typeLabel]
+      properties = case defaultVal of
+        Just val -> Map.fromList [("default", val)]
+        Nothing -> Map.empty
+      subject = Subject { identity = identity, labels = labels, properties = properties }
+  in patternWith subject []
+
+-- | Create a function type pattern programmatically (simple, single arrow).
+--
+-- Creates a Pattern Subject representing a function type signature.
+-- The relationship pattern has FunctionType label and contains source and target nodes.
+--
+-- Example: createFunctionTypePattern (Just "personName") "Text" (Just (SubjectValue.VString "world")) "String"
+-- Creates: (personName::Text {default:"world"})==>(arbString::String)
+--
+-- Note: For curried functions (multiple parameters), this is a future enhancement.
+-- For now, this handles simple single-parameter functions.
+createFunctionTypePattern
+  :: Maybe Text        -- ^ Parameter name (Nothing for anonymous parameter)
+  -> Text              -- ^ Parameter type label (Text, Int, etc.)
+  -> Maybe SubjectValue.Value  -- ^ Default value (for optional parameters, using Subject.Value)
+  -> Text              -- ^ Return type label (String, Int, etc.)
+  -> Pattern Subject   -- ^ Pattern Subject representing the function type
+createFunctionTypePattern paramName paramType defaultVal returnType =
+  -- Create source node (parameter)
+  let sourceNode = createTypeNode paramName paramType defaultVal
+      -- Create target node (return type) - use universal identifier convention
+      -- All functions returning String share the same node: (arbString::String)
+      returnTypeId = case returnType of
+        "String" -> "arbString"
+        "Text" -> "arbText"
+        "Int" -> "arbInt"
+        "Integer" -> "arbInteger"
+        "Double" -> "arbDouble"
+        "Bool" -> "arbBool"
+        _ -> "arb" <> T.unpack returnType  -- Fallback convention
+      targetNode = createTypeNode (Just (T.pack returnTypeId)) returnType Nothing
+      -- Create relationship pattern with FunctionType label
+      relationshipSubject = Subject
+        { identity = Symbol ""  -- Anonymous relationship
+        , labels = Set.fromList ["FunctionType"]
+        , properties = Map.empty
+        }
+  in patternWith relationshipSubject [sourceNode, targetNode]
 
 -- | Validate a type signature Pattern element.
 --

@@ -2,7 +2,7 @@
 module Main where
 
 import qualified PatternAgent.Runtime.LLM as LLM
-import PatternAgent.Language.Core (Model, createModel, OpenAI)
+import PatternAgent.Language.Core (Model, createModel, Provider(OpenAI))
 import Control.Monad (when)
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.Text (Text, pack, unpack)

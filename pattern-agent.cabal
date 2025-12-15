@@ -86,17 +86,19 @@ library
         base ^>=4.20.2.0,
         pattern,
         gram,
+        subject,
         hashable ^>=1.4,
         http-client ^>=0.7,
         http-client-tls ^>=0.3,
         http-types ^>=0.12,
         aeson >=2.1,
-        bytestring ^>=0.11,
+          bytestring ^>=0.11 || ^>=0.12,
         text >=2.0,
         mtl ^>=2.3,
         directory ^>=1.3,
-        containers ^>=0.6,
-        lens ^>=5.0
+          containers ^>=0.6 || ^>=0.7,
+        lens ^>=5.3,
+        vector
 
     -- Directories containing source files.
     hs-source-dirs:   src
@@ -124,7 +126,7 @@ executable pattern-agent
         aeson >=2.1,
         aeson-pretty ^>=0.8,
         text >=2.0,
-        bytestring ^>=0.11
+        bytestring ^>=0.11 || ^>=0.12
 
     -- Directories containing source files.
     hs-source-dirs:   app
@@ -161,6 +163,12 @@ test-suite pattern-agent-test
         base ^>=4.20.2.0,
         pattern-agent,
         pattern,
+        gram,
+        subject,
+        lens ^>=5.3,
+        aeson >=2.1,
+        containers ^>=0.6 || ^>=0.7,
+        vector,
         tasty ^>=1.4,
         tasty-hunit ^>=0.10,
         tasty-quickcheck ^>=0.10,

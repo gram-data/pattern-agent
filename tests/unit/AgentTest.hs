@@ -4,14 +4,17 @@ module AgentTest where
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import PatternAgent.Language.Core (Agent, Tool, createAgent, createTool, createModel, Provider(..), agentName, agentDescription, agentModel, agentInstruction, agentTools, toolName)
+import PatternAgent.Language.Core (Agent, Tool, createAgent, createTool, createModel, Model(..), Provider(..), agentName, agentDescription, agentModel, agentInstruction, agentTools, toolName)
 import Control.Lens (view)
 import qualified Data.Text as T
-import Pattern (Pattern Subject)
+import Pattern (Pattern)
+import Subject.Core (Subject)
 import qualified Gram
 
+type PatternSubject = Pattern Subject
+
 -- | Helper: Parse type signature string to Pattern Subject element.
-parseTypeSig :: String -> Pattern Subject
+parseTypeSig :: String -> PatternSubject
 parseTypeSig sig = case Gram.fromGram sig of
   Right p -> p
   Left _ -> error $ "Failed to parse type signature: " ++ sig

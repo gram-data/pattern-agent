@@ -11,15 +11,16 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import PatternAgent.Language.Core (Agent, Tool, createAgent, createTool, createModel, Provider(..), agentName, agentTools, toolName)
 import PatternAgent.Language.Serialization (parseGram, parseAgent, parseTool)
+import PatternAgent.Language.TypeSignature (createFunctionTypePattern)
+import Subject.Value (Value(..))
 import Control.Lens (view)
 import qualified Data.Text as T
-import Pattern (Pattern Subject)
-import Pattern.Core (patternWith)
-import Subject.Core (Subject(..), Symbol(..))
-import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
-import Subject.Value (Value(..))
+import Pattern (Pattern)
+import Subject.Core (Subject)
+
 import qualified Gram
+
+type PatternSubject = Pattern Subject
 
 -- | Scenario 1: Parse complete agent with tools from gram notation.
 --
@@ -60,9 +61,12 @@ testParseAgentFromGram = testCase "Parse complete agent with tools from gram" $ 
 testAssembleAgentInCode :: TestTree
 testAssembleAgentInCode = testCase "Assemble agent entirely in code (no parsing)" $ do
   -- Create type signature pattern element programmatically (no parsing)
-  let typeSigPattern = case Gram.fromGram "(personName::Text {default:\"world\"})==>(::String)" of
-        Right p -> p
-        Left _ -> error "Should parse type signature"
+  -- This creates: (personName::Text {default:"world"})==>(arbString::String)
+  let typeSigPattern = createFunctionTypePattern 
+        (Just "personName") 
+        "Text" 
+        (Just (VString "world")) 
+        "String"
   
   -- Create tool programmatically using Pattern Subject element (no parsing)
   let tool = case createTool "sayHello" "Returns a friendly greeting message for the given name" typeSigPattern of
@@ -108,10 +112,8 @@ testMixParsedAndProgrammatic = testCase "Mix parsed and programmatic elements" $
         Right t -> t
         Left err -> error $ "Should parse tool: " ++ T.unpack err
   
-  -- Create another tool programmatically
-  let typeSigPattern = case Gram.fromGram "(city::Text)==>(::String)" of
-        Right p -> p
-        Left _ -> error "Should parse type signature"
+  -- Create another tool programmatically (no parsing)
+  let typeSigPattern = createFunctionTypePattern (Just "city") "Text" Nothing "String"
   
   let programmaticTool = case createTool "getWeather" "Gets weather for a city" typeSigPattern of
         Right t -> t

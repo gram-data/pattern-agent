@@ -6,15 +6,24 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import PatternAgent.Language.Core (Tool, createTool, toolName, toolDescription, toolTypeSignature, toolSchema)
 import PatternAgent.Runtime.ToolLibrary (ToolImpl(..), createToolImpl, toolImplName, toolImplDescription, toolImplSchema, toolImplInvoke, emptyToolLibrary, registerTool, lookupTool, validateToolArgs)
-import PatternAgent.Language.TypeSignature (extractTypeSignatureFromPattern, typeSignatureToJSONSchema, TypeSignature(..), Parameter(..))
+import PatternAgent.Language.TypeSignature (extractTypeSignatureFromPattern, typeSignatureToJSONSchema, TypeSignature(..), Parameter(..), createTypeNode, createFunctionTypePattern)
+import PatternAgent.Language.Core
+import Subject.Core (Subject(..), Symbol(..))
+import Subject.Value (Value(..))
 import Data.Aeson (Value(..), object, (.=))
+import qualified Data.Vector as V
 import qualified Data.Text as T
 import Control.Lens (view)
-import Pattern (Pattern Subject)
+import Pattern (Pattern)
+import Pattern.Core (value, elements)
+import Subject.Core (Subject)
+import qualified Data.Set as Set
 import qualified Gram
 
+type PatternSubject = Pattern Subject
+
 -- | Helper: Parse type signature string to Pattern Subject element.
-parseTypeSig :: String -> Pattern Subject
+parseTypeSig :: String -> PatternSubject
 parseTypeSig sig = case Gram.fromGram sig of
   Right p -> p
   Left _ -> error $ "Failed to parse type signature: " ++ sig
@@ -158,7 +167,7 @@ testSchemaValidationValid = testGroup "Schema Validation - Valid"
       let schema = object
             [ "type" .= ("object" :: T.Text)
             , "properties" .= object ["name" .= object ["type" .= ("string" :: T.Text)]]
-            , "required" .= Array [String "name"]
+            , "required" .= Array (V.fromList [String "name"])
             ]
       let args = object ["name" .= ("Alice" :: T.Text)]
       case validateToolArgs schema args of
@@ -169,7 +178,7 @@ testSchemaValidationValid = testGroup "Schema Validation - Valid"
       let schema = object
             [ "type" .= ("object" :: T.Text)
             , "properties" .= object ["age" .= object ["type" .= ("integer" :: T.Text)]]
-            , "required" .= Array [String "age"]
+            , "required" .= Array (V.fromList [String "age"])
             ]
       let args = object ["age" .= (42 :: Int)]
       case validateToolArgs schema args of
@@ -184,7 +193,7 @@ testSchemaValidationInvalid = testGroup "Schema Validation - Invalid"
       let schema = object
             [ "type" .= ("object" :: T.Text)
             , "properties" .= object ["name" .= object ["type" .= ("string" :: T.Text)]]
-            , "required" .= Array [String "name"]
+            , "required" .= Array (V.fromList [String "name"])
             ]
       let args = object []  -- Missing name
       case validateToolArgs schema args of
@@ -195,7 +204,7 @@ testSchemaValidationInvalid = testGroup "Schema Validation - Invalid"
       let schema = object
             [ "type" .= ("object" :: T.Text)
             , "properties" .= object ["name" .= object ["type" .= ("string" :: T.Text)]]
-            , "required" .= Array [String "name"]
+            , "required" .= Array (V.fromList [String "name"])
             ]
       let args = object ["name" .= (42 :: Int)]  -- Wrong type
       case validateToolArgs schema args of
@@ -225,6 +234,50 @@ testTypeSignatureToJSONSchema = testGroup "Type Signature to JSON Schema"
         _ -> assertFailure "Schema should be JSON object"
   ]
 
+-- | Unit test: Verify gram-hs generates identifiers for anonymous nodes.
+testAnonymousNodeIdentifiers :: TestTree
+testAnonymousNodeIdentifiers = testGroup "Anonymous Node Identifiers"
+  [ testCase "Anonymous node (::String) gets generated identifier" $ do
+      -- Parse an anonymous node to see how gram-hs handles it
+      let parsed = case Gram.fromGram "(::String)" of
+            Right p -> p
+            Left _ -> error "Should parse anonymous node"
+      -- Verify it has an identifier (gram-hs generates one)
+      let subject = value parsed
+      case identity subject of
+        Symbol s -> T.null (T.pack s) @?= False  -- Should have generated identifier
+        _ -> assertFailure "Should have Symbol identity"
+      -- Verify it has String label
+      Set.member "String" (labels subject) @?= True
+  ]
+
+-- | Unit test: Programmatic type signature construction.
+testProgrammaticTypeSignature :: TestTree
+testProgrammaticTypeSignature = testGroup "Programmatic Type Signature Construction"
+  [ testCase "Create function type pattern programmatically" $ do
+      -- Create (personName::Text {default:"world"})==>(::String) programmatically
+      let typeSigPattern = createFunctionTypePattern 
+            (Just "personName") 
+            "Text" 
+            (Just (VString "world")) 
+            "String"
+      -- Verify it's a relationship pattern with 2 elements
+      length (elements typeSigPattern) @?= 2
+      -- Verify it has FunctionType label
+      let subject = value typeSigPattern
+      Set.member "FunctionType" (labels subject) @?= True
+      -- Verify source node has personName identifier
+      let sourceNode = head (elements typeSigPattern)
+      case identity (value sourceNode) of
+        Symbol s -> s @?= "personName"
+        _ -> assertFailure "Source node should have personName identifier"
+      -- Verify target node has arbString identifier (universal String type)
+      let targetNode = elements typeSigPattern !! 1
+      case identity (value targetNode) of
+        Symbol s -> s @?= "arbString"
+        _ -> assertFailure "Target node should have arbString identifier"
+  ]
+
 tests :: TestTree
 tests = testGroup "Tool Tests"
   [ testToolCreationWithTypeSignature
@@ -234,5 +287,7 @@ tests = testGroup "Tool Tests"
   , testSchemaValidationValid
   , testSchemaValidationInvalid
   , testTypeSignatureToJSONSchema
+  , testAnonymousNodeIdentifiers
+  , testProgrammaticTypeSignature
   ]
 

@@ -15,8 +15,11 @@ module PatternAgent.Language.Schema
   ) where
 
 import PatternAgent.Language.Core (Agent, Tool)
-import Pattern (Pattern Subject)
+import Pattern (Pattern)
+import Subject.Core (Subject)
 import Data.Text (Text)
+
+type PatternSubject = Pattern Subject
 
 -- | Validation error type.
 data ValidationError
@@ -47,5 +50,5 @@ validateToolSchema tool = undefined -- TODO: Implement schema validation
 -- | Validate general pattern structure.
 --
 -- Checks that a Pattern Subject has valid structure (identifier, properties, elements).
-validatePatternStructure :: Pattern Subject -> Either ValidationError ()
+validatePatternStructure :: PatternSubject -> Either ValidationError ()
 validatePatternStructure pattern = undefined -- TODO: Implement pattern structure validation

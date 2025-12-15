@@ -57,7 +57,7 @@ data ToolImpl = ToolImpl
 data ToolLibrary = ToolLibrary
   { libraryTools :: Map Text ToolImpl
   }
-  deriving (Eq, Show, Generic)
+  deriving (Generic)
 
 -- | Create a tool implementation.
 --
@@ -124,7 +124,9 @@ validateToolArgs schema args = case (schema, args) of
           Just (Object props) -> props
           _ -> KM.empty
     let required = case KM.lookup (K.fromText "required") schemaMap of
-          Just (Array req) -> mapMaybe extractString (V.toList req)
+          Just (Array req) -> 
+            let mapMaybe f = foldr (\x acc -> case f x of Just y -> y:acc; Nothing -> acc) []
+            in mapMaybe extractString (V.toList req)
           _ -> []
     
     -- Check all required fields are present
@@ -134,12 +136,12 @@ validateToolArgs schema args = case (schema, args) of
         Left $ "Missing required field: " <> reqField
     
     -- Validate field types
-    KM.foldlWithKey (\acc key val -> do
+    KM.foldrWithKey (\key val acc -> do
       validated <- acc
-      let fieldName = T.pack $ K.toText key
+      let fieldName = K.toText key
       case KM.lookup key properties of
         Just fieldSchema -> do
-          validateFieldType fieldSchema val
+          _ <- validateFieldType fieldSchema val
           return validated
         Nothing -> Left $ "Unknown field: " <> fieldName
       ) (Right args) argMap

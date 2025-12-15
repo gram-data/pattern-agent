@@ -185,7 +185,7 @@ toolTypeSignature = lens getter setter
 
 -- | Lens for tool JSON schema (generated from type signature, not stored).
 -- Extracts type signature from pattern elements and converts to JSON schema.
-toolSchema :: Lens' Tool Value
+toolSchema :: Lens' Tool (Data.Aeson.Value)
 toolSchema = lens getter setter
   where
     getter p = case elements p of

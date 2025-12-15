@@ -22,7 +22,7 @@ module PatternAgent.Language.Serialization
   ) where
 
 import PatternAgent.Language.Core (Agent, Tool)
-import Pattern (Pattern Subject)
+import Pattern (Pattern)
 import Pattern.Core (value, elements, patternWith)
 import Subject.Core (Subject(..), Symbol(..))
 import qualified Gram
@@ -33,9 +33,11 @@ import qualified Data.Text as T
 import qualified Data.Set as Set
 import Control.Monad (unless)
 
+type PatternSubject = Pattern Subject
+
 -- | Parse gram notation string to Pattern Subject.
 -- Uses gram-hs parser to convert gram notation text to Pattern Subject.
-parseGram :: Text -> Either Text (Pattern Subject)
+parseGram :: Text -> Either Text PatternSubject
 parseGram gram = case Gram.fromGram (T.unpack gram) of
   Left (ParseError err) -> Left $ T.pack err
   Right pattern -> Right pattern
@@ -72,7 +74,7 @@ parseAgent gram = do
 -- - Pattern has exactly 2 elements (relationship pattern: source -> target) -> add FunctionType label
 -- - Pattern contains nested patterns -> recursively normalize those patterns
 -- - Pattern doesn't already have FunctionType label
-normalizeTypeSignaturePattern :: Pattern Subject -> Pattern Subject
+normalizeTypeSignaturePattern :: PatternSubject -> PatternSubject
 normalizeTypeSignaturePattern patternElem =
   let subject = value patternElem
       currentLabels = labels subject
@@ -112,7 +114,7 @@ parseTool gram = do
 
 -- | Convert Pattern Subject to gram notation string.
 -- Uses gram-hs serializer to convert Pattern Subject to gram notation text.
-toGram :: Pattern Subject -> Text
+toGram :: PatternSubject -> Text
 toGram pattern = T.pack $ Gram.toGram pattern
 
 -- | Convert agent to gram notation.
