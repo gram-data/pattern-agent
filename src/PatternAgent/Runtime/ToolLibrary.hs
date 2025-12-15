@@ -29,7 +29,7 @@ module PatternAgent.Runtime.ToolLibrary
   , validateToolArgs
   ) where
 
-import PatternAgent.Language.Core (Tool)
+import PatternAgent.Language.Core (Tool, toolName, toolDescription, toolSchema)
 import Data.Aeson (Value(..), object, (.=))
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Aeson.Key as K
@@ -39,7 +39,8 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
-import Control.Monad (unless, when)
+import Control.Monad (unless, when, guard)
+import Control.Lens (view)
 
 -- | Tool implementation with executable function.
 --
@@ -106,7 +107,21 @@ bindTool
   :: Tool              -- ^ tool: Tool specification (Pattern)
   -> ToolLibrary       -- ^ library: Tool library
   -> Maybe ToolImpl    -- ^ Bound tool implementation if found and matches
-bindTool tool library = undefined -- TODO: Implement tool binding with validation
+bindTool tool library = do
+  -- Lookup tool by name
+  toolImpl <- lookupTool (view toolName tool) library
+  
+  -- Validate that ToolImpl matches Tool specification
+  -- Check name matches (already verified by lookup)
+  guard $ toolImplName toolImpl == view toolName tool
+  
+  -- Check description matches
+  guard $ toolImplDescription toolImpl == view toolDescription tool
+  
+  -- Check schema matches (schema is computed from type signature, so compare)
+  guard $ toolImplSchema toolImpl == view toolSchema tool
+  
+  return toolImpl
 
 -- | Validate tool arguments against JSON schema.
 --
