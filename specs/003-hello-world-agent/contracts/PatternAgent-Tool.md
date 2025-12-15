@@ -22,7 +22,7 @@ Creates a tool specification with gram type signature (serializable, no implemen
 createToolSpecification
   :: Text              -- name: Unique tool name
   -> Text              -- description: Tool description
-  -> Text              -- typeSignature: Type signature in gram path notation (curried form, e.g., "(::Text {paramName:\"name\"})==>(::String)")
+  -> Text              -- typeSignature: Type signature in gram path notation (curried form, e.g., "(personName::Text)==>(::String)")
   -> ToolSpecification
 ```
 
@@ -41,16 +41,16 @@ createToolSpecification
 let sayHelloSpec = createToolSpecification
       "sayHello"
       "Returns a friendly greeting message for the given name"
-      -- Type signature in curried form: (::Text {paramName:"name"})==>(::String)
+      -- Type signature in curried form: (personName::Text)==>(::String)
       -- (Implementation may parse from text or gram path notation)
 ```
 
-**Type Signature Format** (Curried Form with Property Records):
-- Simple: `(::Text)==>(::String)`
-- Named parameter: `(::Text {paramName:"name"})==>(::String)`
-- Multiple parameters: `(::Text {paramName:"name"})==>(::Int {paramName:"age"})==>(::String)`
-- Optional parameter: `(::Text {paramName:"name"})==>(::Int {paramName:"age", optional:true})==>(::String)`
-- Record parameter: `(::Object {paramName:"params", fields:[{name:"name", type:"Text"}, {name:"age", type:"Int"}]})==>(::String)`
+**Type Signature Format** (Curried Form with Parameter Names as Identifiers):
+- Simple (no parameters): `()==>(::String)`
+- Named parameter: `(personName::Text)==>(::String)`
+- Multiple parameters: `(personName::Text)==>(age::Int)==>(::String)`
+- Optional parameter: `(personName::Text)==>(age::Int {default:18})==>(::String)`
+- Record parameter: `(userParams::Object {fields:[{name:"name", type:"Text"}, {name:"age", type:"Int"}]})==>(::String)`
 
 ## Tool Implementation Creation
 
@@ -269,12 +269,12 @@ Tool descriptions use JSON Schema for parameter definition. The schema must defi
 {
   "type": "object",
   "properties": {
-    "paramName": {
+    "personName": {
       "type": "string",
       "description": "Parameter description"
     }
   },
-  "required": ["paramName"]
+  "required": ["personName"]
 }
 ```
 
@@ -303,14 +303,14 @@ typeSignatureToJSONSchema
 - `Int` → JSON `"type": "integer"`
 - `Double` → JSON `"type": "number"`
 - `Bool` → JSON `"type": "boolean"`
-- `Maybe T` → Optional parameter (not in required list)
+- `T {default:value}` → Optional parameter with default value (not in required list, default included in schema)
 - `{field1: T1, field2: T2}` → JSON object with properties
 - `[T]` → JSON `"type": "array"`
 
 **Example**:
 ```haskell
 -- Type signature in curried form (gram path notation)
-let typeSig = "(::Text {paramName:\"name\"})==>(::String)"
+let typeSig = "(personName::Text)==>(::String)"
 case typeSignatureToJSONSchema typeSig of
   Right schema -> -- Use schema
   Left error -> -- Handle error
@@ -372,11 +372,11 @@ ToolSpecification is fully serializable (ToJSON, FromJSON instances).
 [sayHello:ToolSpecification {
   description: "Returns a friendly greeting message for the given name"
 } |
-  (::Text {paramName:"name"})==>(::String)
+  (personName::Text)==>(::String)
 ]
 ```
 
-**Note**: Tool name is stored as the pattern identifier (`sayHello:ToolSpecification`), not as a property. This ensures global uniqueness required for LLM tool calling.
+**Note**: Tool name is stored as the pattern identifier (`sayHello:ToolSpecification`), ensuring global uniqueness required for LLM tool calling. Parameter name `personName` is also a globally unique identifier, encouraging consistent vocabulary.
 
 **Note**: JSON schema is generated from type signature during deserialization, not stored.
 
@@ -385,15 +385,15 @@ ToolSpecification is fully serializable (ToJSON, FromJSON instances).
 {
   "name": "sayHello",
   "description": "Returns a friendly greeting message for the given name",
-  "typeSignature": "(::Text {paramName:\"name\"})==>(::String)",
+  "typeSignature": "(personName::Text)==>(::String)",
   "schema": {
     "type": "object",
     "properties": {
-      "name": {
+      "personName": {
         "type": "string"
       }
     },
-    "required": ["name"]
+    "required": ["personName"]
   }
 }
 ```

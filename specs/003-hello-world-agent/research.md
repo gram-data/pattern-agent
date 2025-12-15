@@ -234,33 +234,34 @@
 - Consider how gram notation can represent parameter names, types, and optional parameters
 
 **Findings**:
-- **Decision**: Use gram path notation in curried form with property records for type signatures (e.g., `(::Text {paramName:"name"})==>(::String)`)
+- **Decision**: Use gram path notation in curried form with parameter names as identifiers (e.g., `(personName::Text)==>(::String)`)
 - **Rationale**:
   - Curried form creates graph structure enabling function composition and pattern matching
-  - Property records for parameter names avoid global identifier conflicts
+  - Parameter names as identifiers encourage consistent vocabulary through global uniqueness
   - Represents only JSON Schema types (not Haskell implementation details like `IO`)
   - More structured than text-based signatures
   - Serializable in gram path notation
   - Can be parsed and converted to JSON schema automatically
+  - More gram-native (identifiers are first-class in gram notation)
 - **Type Signature Grammar** (Curried Form):
   - Simple function: `()==>(::String)`
-  - Named parameters: `(::Text {paramName:"name"})==>(::String)`
-  - Multiple parameters: `(::Text {paramName:"name"})==>(::Int {paramName:"age"})==>(::String)`
-  - Optional parameters: `(::Text {paramName:"name"})==>(::Int {paramName:"age", optional:true})==>(::String)`
-  - Record parameters: `(::Object {paramName:"params", fields:[...]})==>(::String)`
-  - Nested types: `(::Object {paramName:"user", fields:[...]})==>(::String)`
+  - Named parameters: `(personName::Text)==>(::String)`
+  - Multiple parameters: `(personName::Text)==>(age::Int)==>(::String)`
+  - Optional parameters: `(personName::Text)==>(age::Int {default:18})==>(::String)`
+  - Record parameters: `(userParams::Object {fields:[...]})==>(::String)`
+  - Nested types: `(userParams::Object {fields:[...]})==>(::String)`
 - **Schema Generation**:
   - Parse gram type signature to extract parameter names, types, and optionality
   - Convert gram types to JSON schema types (Text → string, Int → number, etc.)
-  - Handle optional parameters (Maybe types become optional in JSON schema)
-  - Generate required fields list from non-optional parameters
+  - Handle optional parameters (parameters with `default` values become optional in JSON schema, default included in schema)
+  - Generate required fields list from parameters without default values
   - Handle nested records as nested JSON objects
 - **Type Mapping**:
   - `Text` → JSON `"type": "string"`
   - `Int` → JSON `"type": "integer"`
   - `Double` → JSON `"type": "number"`
   - `Bool` → JSON `"type": "boolean"`
-  - `Maybe T` → Optional parameter (not in required list)
+  - `T {default:value}` → Optional parameter with default value (not in required list, default included in schema)
   - `{field1: T1, field2: T2}` → JSON object with properties
   - `[T]` → JSON `"type": "array"`
 - **Parser Design**:
@@ -271,7 +272,7 @@
 - **Schema Generator Design**:
   - Convert parsed type signature to JSON schema
   - Generate properties from parameter list
-  - Generate required list from non-optional parameters
+  - Generate required list from parameters without default values
   - Recursively handle nested types
 - **Alternatives Considered**:
   - Manual JSON schemas - rejected (too verbose, error-prone, not self-documenting)
@@ -298,14 +299,14 @@
 - **Tool Specification** (in gram notation):
   - Name: `sayHello`
   - Description: "Returns a friendly greeting message for the given name"
-  - Type Signature: `(::Text {paramName:"name"})==>(::String)` (curried form)
+  - Type Signature: `(personName::Text)==>(::String)` (curried form)
   - JSON Schema: Auto-generated from type signature
 - **Gram Notation Example**:
   ```gram
   [sayHello:ToolSpecification {
     description: "Returns a friendly greeting message for the given name"
   } |
-    (::Text {paramName:"name"})==>(::String)
+    (personName::Text)==>(::String)
   ]
   ```
 - **Implementation**:
@@ -314,9 +315,9 @@
   sayHelloTool = createTool
     "sayHello"
     "Returns a friendly greeting message for the given name"
-    (typeSignatureToJSONSchema "(::Text {paramName:\"name\"})==>(::String)")  -- Auto-generated schema
+    (typeSignatureToJSONSchema "(personName::Text)==>(::String)")  -- Auto-generated schema
     (\args -> do
-      -- Extract name from args JSON
+      -- Extract personName from args JSON
       -- Return greeting message
     )
   ```
@@ -343,7 +344,7 @@ After research, the following clarifications are resolved:
 - **sayHello Tool**: Simple greeting tool with `name` parameter, returns friendly greeting message
 - **Tool Specification vs Implementation**: Separate ToolSpecification (serializable) from Tool (executable), bind at execution time via ToolLibrary
 - **Late Binding Architecture**: Tool descriptions in Agent, tool implementations in ToolLibrary, binding happens at execution time for A/B testing support
-- **Gram Type Signatures**: Tool specifications use gram path notation in curried form with property records (e.g., `(::Text {paramName:"name"})==>(::String)`), JSON schemas auto-generated from type signatures
+- **Gram Type Signatures**: Tool specifications use gram path notation in curried form with parameter names as identifiers (e.g., `(personName::Text)==>(::String)`), JSON schemas auto-generated from type signatures
 
 ## Resolved Technical Decisions
 
@@ -355,7 +356,7 @@ After research, the following clarifications are resolved:
 
 2. **Tool System Implementation**:
    - **ToolSpecification**: Serializable tool specification (name, description, gram type signature) - used in Agent
-   - **Type Signature**: Gram path notation in curried form with property records (e.g., `(::Text {paramName:"name"})==>(::String)`)
+   - **Type Signature**: Gram path notation in curried form with parameter names as identifiers (e.g., `(personName::Text)==>(::String)`)
    - **Schema Generation**: JSON schemas auto-generated from gram type signatures
    - **Tool**: Executable tool implementation (name, description, schema, invoke function) - registered in ToolLibrary
    - **ToolLibrary**: Registry mapping tool names to implementations - enables late binding
@@ -370,7 +371,7 @@ After research, the following clarifications are resolved:
    - Enables A/B testing: same agent, different tool implementations
 
 4. **Hello World Example**:
-   - sayHello ToolSpecification with gram type signature `(::Text {paramName:"name"})==>(::String)` (serializable, curried form)
+   - sayHello ToolSpecification with gram type signature `(personName::Text)==>(::String)` (serializable, curried form)
    - JSON schema auto-generated from type signature
    - sayHello Tool implementation (executable)
    - sayHello Tool registered in ToolLibrary

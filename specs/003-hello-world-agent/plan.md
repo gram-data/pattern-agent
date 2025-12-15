@@ -7,7 +7,7 @@
 
 ## Summary
 
-Complete agent execution infrastructure by implementing tool creation, tool association with agents, and tool execution during agent runs. **The implementation begins with designing the gram notation format for tool specifications, using gram path notation in curried form with property records for type signatures (e.g., `(::Text {paramName:"name"})==>(::String)`).** This design artifact (tool description format) will then be used for all subsequent implementation steps. The feature anchors the implementation in a concrete "hello world" example agent that uses the `sayHello` tool to respond to user greetings, demonstrating the complete tool execution flow end-to-end. The implementation builds upon existing execution infrastructure (Execution.hs) and LLM client (LLM.hs) to add tool support, enabling agents to extend their capabilities beyond the LLM's built-in knowledge.
+Complete agent execution infrastructure by implementing tool creation, tool association with agents, and tool execution during agent runs. **The implementation begins with designing the gram notation format for tool specifications, using gram path notation in curried form with parameter names as identifiers (e.g., `(personName::Text)==>(::String)`).** This design artifact (tool description format) will then be used for all subsequent implementation steps. The feature anchors the implementation in a concrete "hello world" example agent that uses the `sayHello` tool to respond to user greetings, demonstrating the complete tool execution flow end-to-end. The implementation builds upon existing execution infrastructure (Execution.hs) and LLM client (LLM.hs) to add tool support, enabling agents to extend their capabilities beyond the LLM's built-in knowledge.
 
 ## Technical Context
 
@@ -129,7 +129,7 @@ Complete agent execution infrastructure by implementing tool creation, tool asso
 **Purpose**: Design the gram notation format for tool specifications, including type signature representation in curried form with property records (gram path notation). This design artifact will be used by all subsequent implementation steps.
 
 **Deliverables**:
-1. **Gram Type Signature Grammar**: Define the grammar for representing tool type signatures in gram path notation using curried form with property records (e.g., `(::Text {paramName:"name"})==>(::String)`)
+1. **Gram Type Signature Grammar**: Define the grammar for representing tool type signatures in gram path notation using curried form with parameter names as identifiers (e.g., `(personName::Text)==>(::String)`)
 2. **ToolSpecification Gram Schema**: Design the complete gram schema for ToolSpecification including:
    - Tool name
    - Tool description

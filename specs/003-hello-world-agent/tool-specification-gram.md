@@ -9,7 +9,7 @@
 Tool specifications are represented in gram notation with the following structure:
 - Tool name (unique identifier)
 - Tool description (natural language)
-- Type signature (gram path notation, curried form with property records)
+- Type signature (gram path notation, curried form with parameter names as identifiers)
 
 ## Gram Schema Structure
 
@@ -17,7 +17,7 @@ Tool specifications are represented in gram notation with the following structur
 [<toolName>:ToolSpecification {
   description: "<natural language description>"
 } |
-  <curried function signature with property records for parameter names>
+  <curried function signature with parameter names as identifiers>
 ]
 ```
 
@@ -33,7 +33,7 @@ Tool specifications are represented in gram notation with the following structur
 [sayHello:ToolSpecification {
   description: "Returns a friendly greeting message for the given name"
 } |
-  (::Text {paramName:"name"})==>(::String)
+  (personName::Text)==>(::String)
 ]
 ```
 
@@ -57,27 +57,29 @@ Tool specifications are represented in gram notation with the following structur
 
 ### Type Signature (Curried Form)
 
-- **Type**: Gram path notation (curried form with property records)
+- **Type**: Gram path notation (curried form with parameter names as identifiers)
 - **Required**: Yes
-- **Description**: Function signature in gram path notation using curried form with property records for parameter names
-- **Format**: Curried form with `==>` arrows, parameter names in `{paramName:"..."}` properties
+- **Description**: Function signature in gram path notation using curried form with parameter names as node identifiers
+- **Format**: Curried form with `==>` arrows, parameter names as identifiers (e.g., `personName::Text`)
 - **Examples**:
-  - `(::Text)==>(::String)` - Simple function (no parameter name needed)
-  - `(::Text {paramName:"name"})==>(::String)` - Named parameter
-  - `(::Text {paramName:"name"})==>(::Int {paramName:"age"})==>(::String)` - Multiple parameters (curried)
-  - `(::Text {paramName:"name"})==>(::Int {paramName:"age", optional:true})==>(::String)` - Optional parameter
-  - `(::Object {paramName:"params", fields:[{name:"name", type:"Text"}, {name:"age", type:"Int"}]})==>(::String)` - Record parameter
+  - `()==>(::String)` - Simple function with no parameters
+  - `(personName::Text)==>(::String)` - Single named parameter
+  - `(personName::Text)==>(age::Int)==>(::String)` - Multiple parameters (curried)
+  - `(personName::Text)==>(age::Int {default:18})==>(::String)` - Optional parameter with default value
+  - `(userParams::Object {fields:[{name:"name", type:"Text"}, {name:"age", type:"Int"}]})==>(::String)` - Record parameter
 
 ## Schema Generation
 
 The curried function signature (gram path notation) is used to automatically generate JSON schema for LLM API compatibility. The schema generation process:
 
 1. Extract parameter nodes from curried chain (all nodes before final return type)
-2. Extract `paramName` from each node's properties
+2. Extract parameter name from each node's identifier
 3. Extract type labels from each parameter node
 4. Convert gram types to JSON schema types (Text → string, Int → integer, etc.)
 5. Group parameters into object structure with properties and required fields
-6. Handle optional parameters (marked with `optional:true` in properties)
+6. Handle optional parameters (marked with `default:value` in properties, include default in schema)
+
+**Note**: Parameter names are identifiers and must be globally unique, encouraging a consistent vocabulary across tool specifications.
 
 See `type-signature-grammar.md` for detailed grammar and schema generation rules.
 

@@ -28,7 +28,7 @@ Represents a tool's declarative specification (serializable, no implementation).
 **Fields**:
 - `toolSpecName :: Text` - Unique name for the tool (required)
 - `toolSpecDescription :: Text` - Natural language description of what the tool does (required)
-- `toolSpecTypeSignature :: Text` - **NEW**: Type signature in gram path notation (curried form, e.g., `(::Text {paramName:"name"})==>(::String)`) (required)
+- `toolSpecTypeSignature :: Text` - **NEW**: Type signature in gram path notation (curried form, e.g., `(personName::Text)==>(::String)`) (required)
 - `toolSpecSchema :: Value` - JSON schema (auto-generated from type signature, not manually specified)
 
 **Validation Rules**:
@@ -46,7 +46,7 @@ Represents a tool's declarative specification (serializable, no implementation).
 data ToolSpecification = ToolSpecification
   { toolSpecName :: Text
   , toolSpecDescription :: Text
-  , toolSpecTypeSignature :: Text  -- Gram path notation type signature in curried form (e.g., "(::Text {paramName:\"name\"})==>(::String)")
+  , toolSpecTypeSignature :: Text  -- Gram path notation type signature in curried form (e.g., "(personName::Text)==>(::String)")
   , toolSpecSchema :: Value  -- Auto-generated JSON schema from type signature
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
@@ -277,11 +277,11 @@ A concrete example tool for the hello world demonstration.
 [sayHello:ToolSpecification {
   description: "Returns a friendly greeting message for the given name"
 } |
-  (::Text {paramName:"name"})==>(::String)
+  (personName::Text)==>(::String)
 ]
 ```
 
-**Note**: Tool name is the pattern identifier (`sayHello`), ensuring global uniqueness required for LLM tool calling.
+**Note**: Tool name is the pattern identifier (`sayHello`), ensuring global uniqueness required for LLM tool calling. Parameter name `personName` is also a globally unique identifier, encouraging consistent vocabulary.
 
 **ToolSpecification** (Haskell):
 ```haskell
@@ -289,8 +289,8 @@ sayHelloSpec :: ToolSpecification
 sayHelloSpec = ToolSpecification
   { toolSpecName = "sayHello"
   , toolSpecDescription = "Returns a friendly greeting message for the given name"
-  , toolSpecTypeSignature = "(::Text {paramName:\"name\"})==>(::String)"
-  , toolSpecSchema = typeSignatureToJSONSchema "(::Text {paramName:\"name\"})==>(::String)"  -- Auto-generated
+  , toolSpecTypeSignature = "(personName::Text)==>(::String)"
+  , toolSpecSchema = typeSignatureToJSONSchema "(personName::Text)==>(::String)"  -- Auto-generated
   }
 ```
 
@@ -300,10 +300,10 @@ sayHelloTool :: Tool
 sayHelloTool = Tool
   { toolName = "sayHello"
   , toolDescription = "Returns a friendly greeting message for the given name"
-  , toolSchema = typeSignatureToJSONSchema "(::Text {paramName:\"name\"})==>(::String)"  -- Auto-generated from type signature
+  , toolSchema = typeSignatureToJSONSchema "(personName::Text)==>(::String)"  -- Auto-generated from type signature
       ]
   , toolInvoke = \args -> do
-      let name = args ^. key "name" . _String
+      let name = args ^. key "personName" . _String
       return $ String $ "Hello, " <> name <> "! Nice to meet you."
   }
 ```
@@ -379,7 +379,7 @@ ConversationContext
 ## State Transitions
 
 ### Tool Specification Creation
-1. Developer provides: name, description, gram type signature in curried form (e.g., `(::Text {paramName:"name"})==>(::String)`)
+1. Developer provides: name, description, gram type signature in curried form (e.g., `(personName::Text)==>(::String)`)
 2. System validates: name and description non-empty, type signature valid gram notation
 3. System generates: JSON schema from type signature using `typeSignatureToJSONSchema`
 4. System creates: ToolSpecification instance with name, description, type signature, and generated schema

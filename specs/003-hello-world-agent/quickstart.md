@@ -24,14 +24,14 @@ sayHelloSpec :: ToolSpecification
 sayHelloSpec = createToolSpecification
   "sayHello"
   "Returns a friendly greeting message for the given name"
-  "(::Text {paramName:\"name\"})==>(::String)"
+  "(personName::Text)==>(::String)"
 ```
 
 **Key Points**:
 - Tool specification uses gram path notation type signature in curried form
-- Type signature `(::Text {paramName:"name"})==>(::String)` uses curried form with property records for parameter names
+- Type signature `(personName::Text)==>(::String)` uses curried form with parameter names as identifiers
 - JSON schema is automatically generated from the type signature
-- Parameter name `name` is stored in `{paramName:"name"}` property to avoid global identifier conflicts
+- Parameter name `personName` is a globally unique identifier, encouraging consistent vocabulary
 - `Text` type maps to JSON `string` type automatically
 - `String` is the JSON Schema return type (Haskell implementation may be `IO Text`, but gram represents JSON Schema interface)
 
@@ -49,10 +49,10 @@ sayHelloTool :: Tool
 sayHelloTool = createTool
   "sayHello"
   "Returns a friendly greeting message for the given name"
-  (typeSignatureToJSONSchema "(::Text {paramName:\"name\"})==>(::String)")  -- Auto-generated schema
+  (typeSignatureToJSONSchema "(personName::Text)==>(::String)")  -- Auto-generated schema
   (\args -> do
-    -- Extract name from JSON arguments
-    let name = args ^. key "name" . _String
+    -- Extract personName from JSON arguments
+    let name = args ^. key "personName" . _String
     -- Return greeting message
     return $ String $ "Hello, " <> name <> "! Nice to meet you."
   )
@@ -84,7 +84,7 @@ let agent = Agent
 
 **Key Points**:
 - `agentToolSpecs` is a list of tool specifications (serializable) available to the agent
-- Tool specifications use gram path notation type signatures in curried form (e.g., `(::Text {paramName:"name"})==>(::String)`)
+- Tool specifications use gram path notation type signatures in curried form (e.g., `(personName::Text)==>(::String)`)
 - Agent instructions should guide when and how to use tools
 - Tool specifications can be shared across multiple agents
 - Agent can have zero tool specifications (tool-free agents still supported)
@@ -194,16 +194,16 @@ sayHelloSpec :: ToolSpecification
 sayHelloSpec = createToolSpecification
   "sayHello"
   "Returns a friendly greeting message for the given name"
-  "(::Text {paramName:\"name\"})==>(::String)"
+  "(personName::Text)==>(::String)"
 
 -- Create sayHello tool implementation
 sayHelloTool :: Tool
 sayHelloTool = createTool
   "sayHello"
   "Returns a friendly greeting message for the given name"
-  (typeSignatureToJSONSchema "(::Text {paramName:\"name\"})==>(::String)")  -- Auto-generated schema
+  (typeSignatureToJSONSchema "(personName::Text)==>(::String)")  -- Auto-generated schema
   (\args -> do
-    let name = args ^. key "name" . _String
+    let name = args ^. key "personName" . _String
     return $ String $ "Hello, " <> name <> "! Nice to meet you."
   )
 
@@ -269,24 +269,24 @@ Examples of gram type signatures for different tool patterns:
 createToolSpecification "getTime" "Gets current time" "()==>(::String)"
 ```
 
-**Named parameters** (curried form with property records):
+**Named parameters** (curried form with identifiers):
 ```haskell
-createToolSpecification "greet" "Greets a person" "(::Text {paramName:\"name\"})==>(::String)"
+createToolSpecification "greet" "Greets a person" "(personName::Text)==>(::String)"
 ```
 
 **Multiple parameters** (curried form):
 ```haskell
-createToolSpecification "calculate" "Adds two numbers" "(::Int {paramName:\"a\"})==>(::Int {paramName:\"b\"})==>(::Int)"
+createToolSpecification "calculate" "Adds two numbers" "(a::Int)==>(b::Int)==>(::Int)"
 ```
 
 **Optional parameters**:
 ```haskell
-createToolSpecification "search" "Searches with optional limit" "(::Text {paramName:\"query\"})==>(::Int {paramName:\"limit\", optional:true})==>(::Array)"
+createToolSpecification "search" "Searches with optional limit" "(query::Text)==>(limit::Int {default:10})==>(::Array)"
 ```
 
 **Record parameters**:
 ```haskell
-createToolSpecification "createUser" "Creates a user" "(::Object {paramName:\"user\", fields:[{name:\"name\", type:\"Text\"}, {name:\"email\", type:\"Text\"}, {name:\"age\", type:\"Int\"}]})==>(::String)"
+createToolSpecification "createUser" "Creates a user" "(userParams::Object {fields:[{name:\"name\", type:\"Text\"}, {name:\"email\", type:\"Text\"}, {name:\"age\", type:\"Int\"}]})==>(::String)"
 ```
 
 ### Tool Parameter Extraction
@@ -295,7 +295,7 @@ When implementing tool invocation functions, extract parameters from JSON:
 
 ```haskell
 (\args -> do
-  let name = args ^. key "name" . _String
+  let name = args ^. key "personName" . _String
   let age = args ^. key "age" . _Number
   -- Use parameters...
   return $ String result
@@ -308,9 +308,9 @@ Handle errors gracefully in tool invocation:
 
 ```haskell
 (\args -> do
-  case args ^? key "name" . _String of
+  case args ^? key "personName" . _String of
     Just name -> return $ String $ "Hello, " <> name
-    Nothing -> return $ String "Error: name parameter required"
+    Nothing -> return $ String "Error: personName parameter required"
 )
 ```
 
@@ -319,8 +319,8 @@ Handle errors gracefully in tool invocation:
 Generate JSON schema from gram type signature:
 
 ```haskell
--- Type signature (curried form with property records)
-let typeSig = "(::Text {paramName:\"name\"})==>(::Int {paramName:\"age\", optional:true})==>(::String)"
+-- Type signature (curried form with parameter names as identifiers)
+let typeSig = "(personName::Text)==>(age::Int {default:18})==>(::String)"
 
 -- Generate schema
 case typeSignatureToJSONSchema typeSig of

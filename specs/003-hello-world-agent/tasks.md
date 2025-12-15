@@ -43,7 +43,7 @@
 - [ ] T007 [P] Define ToolLibrary type in src/PatternAgent/Tool.hs with libraryTools field (Map Text Tool)
 - [ ] T008 [P] Define TypeSignature parsed representation type in src/PatternAgent/Tool.hs for parsed gram type signatures
 - [ ] T009 [P] Implement emptyToolLibrary function in src/PatternAgent/Tool.hs
-- [ ] T010 [P] Implement parseTypeSignature function in src/PatternAgent/Tool.hs to parse gram type signatures in curried form (e.g., "(::Text {paramName:\"name\"})==>(::String)")
+- [ ] T010 [P] Implement parseTypeSignature function in src/PatternAgent/Tool.hs to parse gram type signatures in curried form (e.g., "(personName::Text)==>(::String)")
 - [ ] T011 [P] Implement typeSignatureToJSONSchema function in src/PatternAgent/Tool.hs to convert parsed type signatures to JSON schemas
 - [ ] T012 [P] Implement validateToolArgs function in src/PatternAgent/Tool.hs for manual JSON schema validation
 - [ ] T013 [P] Define MessageRole with FunctionRole constructor in src/PatternAgent/Context.hs for tool result messages
@@ -205,7 +205,7 @@
 
 ### Implementation for User Story 4 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T094 [US4] Create sayHelloSpec ToolSpecification in src/PatternAgent/HelloWorld.hs with name "sayHello", description, type signature "(::Text {paramName:\"name\"})==>(::String)"
+- [ ] T094 [US4] Create sayHelloSpec ToolSpecification in src/PatternAgent/HelloWorld.hs with name "sayHello", description, type signature "(personName::Text)==>(::String)"
 - [ ] T095 [US4] Create sayHelloTool Tool implementation in src/PatternAgent/HelloWorld.hs with invoke function that extracts name and returns greeting
 - [ ] T096 [US4] Create helloWorldToolLibrary ToolLibrary in src/PatternAgent/HelloWorld.hs with sayHello tool registered
 - [ ] T097 [US4] Create helloWorldAgent Agent in src/PatternAgent/HelloWorld.hs with name "hello_world_agent", description, model, instruction to use sayHello tool, and agentToolSpecs = [sayHelloSpec]

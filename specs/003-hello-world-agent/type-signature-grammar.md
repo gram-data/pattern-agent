@@ -2,13 +2,13 @@
 
 **Feature**: Hello World Agent with Tool Execution  
 **Date**: 2025-01-27  
-**Purpose**: Define the grammar for tool type signatures in gram path notation (curried form with property records)
+**Purpose**: Define the grammar for tool type signatures in gram path notation (curried form with parameter names as identifiers)
 
 ## Grammar Overview
 
-Tool type signatures use gram path notation in curried form with property records for parameter names. This approach:
+Tool type signatures use gram path notation in curried form with parameter names as node identifiers. This approach:
 - Creates graph structures enabling function composition and pattern matching
-- Avoids global identifier conflicts by storing parameter names in property records
+- Encourages consistent vocabulary by requiring globally unique parameter names
 - Represents only JSON Schema types (not Haskell implementation details like `IO`)
 - Uses `==>` arrows for function type relationships (convention for clarity; gram treats all arrow types as semantically equivalent)
 
@@ -22,7 +22,7 @@ Tool type signatures use gram path notation in curried form with property record
 
 Where:
 - `==>` is the function arrow (used by convention for clarity; gram treats `==>`, `-->`, `~~>`, etc. as semantically equivalent - arrow types are decorative)
-- Each `<param>` is a type node with optional `{paramName:"..."}` property
+- Each `<param>` is a type node with a parameter name as its identifier
 - `<returnType>` is the final type node (JSON Schema type, not Haskell `IO` types)
 - Parameters are chained in curried form: `Type1 ==> Type2 ==> Type3`
 - **Note**: While we use `==>` for clarity, other arrow types (`-->`, `~~>`, etc.) would also work - gram does not enforce semantic differences between arrow types
@@ -30,14 +30,15 @@ Where:
 ### Parameter Nodes
 
 ```
-(::TypeLabel {paramName: "name", optional: true|false})
+(paramName::TypeLabel {default: value})
 ```
 
 Where:
+- `paramName` is the parameter name as a node identifier (must be globally unique)
 - `::TypeLabel` is a type label (e.g., `::Text`, `::Int`, `::String`)
-- `{paramName: "name"}` is a property record storing the parameter name (avoids global identifier conflicts)
-- `optional: true` marks optional parameters (not in required list)
-- Parameter name is stored in properties, not as an identifier
+- `default: value` specifies the default value for optional parameters (not in required list)
+- Parameter name is the node identifier, encouraging consistent vocabulary across tool specifications
+- Default value must match the parameter type
 
 ### Type Labels
 
@@ -66,23 +67,25 @@ Type labels use JSON Schema types:
 
 ### Optional Parameters
 
-Optional parameters are marked with `optional: true` in the property record:
+Optional parameters are marked with `default: value` in the property record:
 ```gram
-(::Int {paramName:"age", optional:true})==>(::String)
+(age::Int {default:18})==>(::String)
 ```
+
+If `age` is not provided, it defaults to `18`.
 
 ### Record Parameters
 
 Record parameters use `:Object` with field definitions in properties:
 ```gram
-(::Object {paramName:"user", fields:[{name:"name", type:"Text"}, {name:"age", type:"Int"}]})==>(::String)
+(userParams::Object {fields:[{name:"name", type:"Text"}, {name:"age", type:"Int"}]})==>(::String)
 ```
 
 ### Array Parameters
 
 Array parameters use `:Array` with element type:
 ```gram
-(::Array {paramName:"items", elementType:"Text"})==>(::Int)
+(items::Array {elementType:"Text"})==>(::Int)
 ```
 
 ## Examples
@@ -98,18 +101,18 @@ No parameters, returns string.
 ### Single Named Parameter
 
 ```gram
-(::Text {paramName:"name"})==>(::String)
+(personName::Text)==>(::String)
 ```
 
-Single named parameter `name` of type `Text`, returns `String`.
+Single named parameter `personName` of type `Text`, returns `String`.
 
 ### Multiple Parameters (Curried Form)
 
 ```gram
-(::Text {paramName:"name"})==>(::Int {paramName:"age"})==>(::String)
+(personName::Text)==>(age::Int)==>(::String)
 ```
 
-Multiple parameters in curried form: `name: Text` then `age: Int`, returns `String`.
+Multiple parameters in curried form: `personName: Text` then `age: Int`, returns `String`.
 
 **JSON Schema Mapping**: Parameters are grouped into an object:
 ```json
@@ -126,15 +129,15 @@ Multiple parameters in curried form: `name: Text` then `age: Int`, returns `Stri
 ### Optional Parameter
 
 ```gram
-(::Text {paramName:"name"})==>(::Int {paramName:"age", optional:true})==>(::String)
+(personName::Text)==>(age::Int {default:18})==>(::String)
 ```
 
-Optional `age` parameter (not in required list).
+Optional `age` parameter with default value `18` (not in required list).
 
 ### Record Parameter
 
 ```gram
-(::Object {paramName:"user", fields:[{name:"name", type:"Text"}, {name:"email", type:"Text"}]})==>(::String)
+(userParams::Object {fields:[{name:"name", type:"Text"}, {name:"email", type:"Text"}]})==>(::String)
 ```
 
 Record/object parameter with nested fields.
@@ -142,8 +145,7 @@ Record/object parameter with nested fields.
 ### Nested Record Types
 
 ```gram
-(::Object {
-  paramName:"user",
+(userParams::Object {
   fields:[
     {name:"name", type:"Text"},
     {name:"address", type:"Object", fields:[{name:"city", type:"Text"}, {name:"country", type:"Text"}]}
@@ -156,7 +158,7 @@ Nested record types with recursive field definitions.
 ### Array Parameter
 
 ```gram
-(::Array {paramName:"items", elementType:"Text"})==>(::Int)
+(items::Array {elementType:"Text"})==>(::Int)
 ```
 
 Array parameter with element type.
@@ -164,23 +166,22 @@ Array parameter with element type.
 ### Complex Example
 
 ```gram
-(::Object {
-  paramName:"searchParams",
+(searchParams::Object {
   fields:[
     {name:"query", type:"Text"},
     {name:"filters", type:"Object", fields:[
-      {name:"category", type:"Text", optional:true},
-      {name:"priceRange", type:"Object", optional:true, fields:[
+      {name:"category", type:"Text", default:""},
+      {name:"priceRange", type:"Object", default:{min:0.0, max:1000.0}, fields:[
         {name:"min", type:"Double"},
         {name:"max", type:"Double"}
       ]}
     ]},
-    {name:"limit", type:"Int", optional:true}
+    {name:"limit", type:"Int", default:10}
   ]
-})==>(::Array {elementType:"Text"})
+})==>(results::Array {elementType:"Text"})
 ```
 
-Complex nested structure with optional fields.
+Complex nested structure with optional fields that have default values.
 
 ## JSON Schema Generation
 
@@ -199,19 +200,19 @@ Complex nested structure with optional fields.
 ### Schema Generation Rules
 
 1. **Extract Parameter Chain**: Traverse curried chain, collect all nodes before final return type
-2. **Extract Parameter Names**: Extract `paramName` from each parameter node's properties
+2. **Extract Parameter Names**: Extract parameter name from each parameter node's identifier
 3. **Extract Types**: Extract type labels from each parameter node
 4. **Convert Types**: Map gram type labels to JSON Schema types
 5. **Group Parameters**: Group all parameters into object structure with properties
-6. **Required Fields**: Include all parameters without `optional: true` in required list
-7. **Optional Fields**: Exclude parameters with `optional: true` from required list
+6. **Required Fields**: Include all parameters without `default` in required list
+7. **Optional Fields**: Exclude parameters with `default` from required list, include default value in schema
 8. **Nested Types**: Recursively generate schemas for `:Object` and `:Array` types
 
 ### Example: Schema Generation
 
 **Type Signature** (Curried Form):
 ```gram
-(::Text {paramName:"name"})==>(::Int {paramName:"age", optional:true})==>(::String)
+(personName::Text)==>(age::Int {default:18})==>(::String)
 ```
 
 **Generated JSON Schema**:
@@ -219,18 +220,19 @@ Complex nested structure with optional fields.
 {
   "type": "object",
   "properties": {
-    "name": {
+    "personName": {
       "type": "string"
     },
     "age": {
-      "type": "integer"
+      "type": "integer",
+      "default": 18
     }
   },
-  "required": ["name"]
+  "required": ["personName"]
 }
 ```
 
-**Note**: `age` is not in `required` because it has `optional: true` in its properties.
+**Note**: `age` is not in `required` because it has `default: 18` in its properties. The default value is included in the JSON schema.
 
 ## Parser Design
 
@@ -238,11 +240,12 @@ Complex nested structure with optional fields.
 
 1. **Parse Gram Path**: Parse curried chain as gram path notation
 2. **Extract Parameter Nodes**: Collect all nodes before final return type node
-3. **Extract Properties**: For each parameter node, extract `paramName` and `optional` from properties
-4. **Extract Types**: Extract type labels from each node
-5. **Build Parameter List**: Construct parameter list with names and types
-6. **Extract Return Type**: Extract final node as return type
-7. **Validate**: Check syntax and type validity
+3. **Extract Identifiers**: For each parameter node, extract parameter name from node identifier
+4. **Extract Properties**: Extract `default` value from properties (if present, parameter is optional)
+5. **Extract Types**: Extract type labels from each node
+6. **Build Parameter List**: Construct parameter list with names, types, and default values
+7. **Extract Return Type**: Extract final node as return type
+8. **Validate**: Check syntax and type validity (default values must match parameter types)
 
 ### Parse Tree Structure
 
@@ -253,9 +256,9 @@ data TypeSignature = TypeSignature
   }
 
 data Param = Param
-  { paramName :: Text           -- From {paramName:"..."} property
+  { paramName :: Text           -- From node identifier
   , paramType :: Type
-  , optional :: Bool            -- From {optional:true} property (default: false)
+  , paramDefault :: Maybe Value -- From {default:value} property (Nothing if required)
   }
 
 data Type = TextType
@@ -277,7 +280,7 @@ data Field = Field
 
 - Type signature must be valid gram path notation
 - Curried chain must use relationship arrows (`==>`, `-->`, `~~>`, etc. - all are semantically equivalent in gram; we use `==>` by convention for clarity)
-- Parameter names must be stored in `{paramName:"..."}` properties (not as identifiers)
+- Parameter names must be node identifiers (globally unique)
 - Type labels must be recognized JSON Schema types (`::Text`, `::Int`, `::Double`, `::Bool`, `::String`, `::Object`, `::Array`)
 - Return type must be a valid JSON Schema type (not Haskell `IO` types)
 - Nested types must be well-formed
@@ -288,7 +291,9 @@ data Field = Field
 Parser should return clear error messages for:
 - Invalid gram path syntax
 - Unknown type labels
-- Missing `paramName` in parameter properties
+- Missing parameter name identifier
+- Duplicate parameter name identifiers (global uniqueness violation)
+- Default value type mismatch (default value must match parameter type)
 - Malformed property records
 - Invalid curried chain structure
 - Missing return type
@@ -298,33 +303,32 @@ Parser should return clear error messages for:
 
 ## Global Identifier Constraints
 
-**Critical Constraint**: Gram notation does **not** scope identifiers. All identifiers must be globally unique, even when nested inside patterns.
-
-**Solution**: Use property records for parameter names:
-- ✅ Parameter names in `{paramName:"name"}` properties (not identifiers)
-- ✅ No global uniqueness constraint
-- ✅ Names available for JSON Schema generation
-- ✅ Maintains graph structure benefits
+**Design Decision**: Parameter names are node identifiers and must be globally unique. This constraint:
+- ✅ Encourages consistent vocabulary across tool specifications
+- ✅ Makes parameter names more prominent and readable
+- ✅ Aligns with gram notation's first-class identifier concept
+- ✅ Simplifies parsing (extract identifier directly)
+- ✅ Promotes descriptive names (e.g., `personName` instead of generic `name`)
 
 **Example**:
 ```gram
 // Function 1
-[:Function {name:"sayHello"} |
-  (::Text {paramName:"name"})==>(::String)
+[sayHello:ToolSpecification |
+  (personName::Text)==>(::String)
 ]
 
-// Function 2 - No conflict!
-[:Function {name:"greet"} |
-  (::Text {paramName:"name"})==>(::String)
+// Function 2 - Uses descriptive name to avoid conflict
+[greet:ToolSpecification |
+  (userName::Text)==>(::String)
 ]
 ```
 
-Both functions can use `paramName:"name"` without conflicts because parameter names are in properties, not identifiers.
+Both functions use descriptive parameter names that are globally unique, encouraging a consistent vocabulary.
 
 ## Notes
 
 - Grammar uses curried form for graph structure benefits (composition, pattern matching)
-- Parameter names stored in property records to avoid global identifier conflicts
+- Parameter names are node identifiers, requiring global uniqueness and encouraging consistent vocabulary
 - Represents only JSON Schema types (not Haskell implementation details)
 - Fully serializable in gram path notation
 - Supports common tool patterns (single param, multiple params, optional params, records)
