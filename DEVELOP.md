@@ -190,7 +190,7 @@ module AgentTest where
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import PatternAgent.Agent
+import PatternAgent.Language.Core
 
 testAgentCreation :: TestTree
 testAgentCreation = testCase "Create agent" $ do
@@ -362,11 +362,15 @@ Use `haskell-tools.nvim` or `coc-haskell` with HLS.
 - **`PatternAgent.Core`**: Core type definitions (re-exports PatternAgent type)
 - **`PatternAgent.Types`**: Type aliases and supporting types
 - **`PatternAgent.Agent`**: Agent type and creation
-- **`PatternAgent.LLM`**: Standalone LLM API client
-- **`PatternAgent.Execution`**: Agent execution logic
-- **`PatternAgent.Context`**: Conversation context management
+- **`PatternAgent.Language.Core`**: Agent and Tool as Pattern Subject, creation, lenses
+- **`PatternAgent.Language.Schema`**: Schema validation
+- **`PatternAgent.Language.TypeSignature`**: Type signature parsing & JSON schema generation
+- **`PatternAgent.Language.Serialization`**: Gram ↔ Pattern conversion
+- **`PatternAgent.Runtime.Execution`**: Agent execution engine
+- **`PatternAgent.Runtime.ToolLibrary`**: ToolImpl and ToolLibrary
+- **`PatternAgent.Runtime.LLM`**: LLM API client
+- **`PatternAgent.Runtime.Context`**: Conversation context management
 - **`PatternAgent.Env`**: Environment variable loading from .env files
-- **`PatternAgent.Tool`**: Tool system (not yet implemented)
 
 ### Adding New Features
 

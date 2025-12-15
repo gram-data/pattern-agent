@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import qualified PatternAgent.LLM as LLM
+import qualified PatternAgent.Runtime.LLM as LLM
+import PatternAgent.Language.Core (Model, createModel, OpenAI)
 import Control.Monad (when)
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.Text (Text, pack, unpack)
@@ -11,8 +12,8 @@ import System.Environment (getArgs)
 import System.Exit (exitFailure, exitSuccess)
 
 -- | Default LLM model to use for testing
-defaultModel :: LLM.Model
-defaultModel = LLM.createModel "gpt-3.5-turbo" LLM.OpenAI
+defaultModel :: Model
+defaultModel = createModel "gpt-3.5-turbo" OpenAI
 
 -- | Default system instruction
 defaultSystemInstruction :: Text
@@ -70,7 +71,7 @@ main = do
           let request = LLM.buildRequest 
                 defaultModel 
                 defaultSystemInstruction 
-                [LLM.Message "user" userMessage]
+                [LLM.LLMMessage "user" userMessage]
                 Nothing  -- temperature (use default)
                 Nothing  -- max_tokens (use default)
           

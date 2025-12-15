@@ -1,21 +1,23 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
--- | Standalone LLM API client.
+-- | LLM API client (Runtime).
 --
 -- This module provides a standalone client for sending requests to LLM APIs.
 -- It handles provider configuration, API key management, HTTP requests,
 -- and response parsing.
-module PatternAgent.LLM
+--
+-- This is part of the runtime implementation (Haskell-specific).
+module PatternAgent.Runtime.LLM
   ( -- * Types
-    Provider(..)
-  , Model(..)
-  , LLMClient(..)
+    LLMClient(..)
   , LLMRequest(..)
   , LLMResponse(..)
-  , Message(..)
+  , LLMMessage(..)
   , Usage(..)
-    -- * Model Creation
+    -- * Re-exported from Language
+  , Provider(..)
+  , Model(..)
   , createModel
     -- * Client Creation
   , createOpenAIClient
@@ -48,22 +50,9 @@ import GHC.Generics (Generic)
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS
 import Network.HTTP.Types (status200)
+import PatternAgent.Language.Core (Provider(..), Model(..), createModel)
 import PatternAgent.Env (loadEnvFile)
 import System.Environment (lookupEnv)
-
--- | LLM Provider enumeration.
-data Provider
-  = OpenAI
-  | Anthropic
-  | Google
-  deriving (Eq, Show, Generic)
-
--- | Model type representing an LLM model identifier and provider.
-data Model = Model
-  { modelId :: Text
-  , modelProvider :: Provider
-  }
-  deriving (Eq, Show, Generic)
 
 -- | LLM Client configuration.
 data LLMClient = LLMClient
@@ -76,16 +65,16 @@ data LLMClient = LLMClient
 -- | LLM API request payload.
 data LLMRequest = LLMRequest
   { requestModel :: Text
-  , requestMessages :: [Message]
+  , requestMessages :: [LLMMessage]
   , requestTemperature :: Maybe Double
   , requestMaxTokens :: Maybe Int
   }
   deriving (Eq, Show, Generic)
 
--- | Message in LLM request.
-data Message = Message
-  { messageRole :: Text  -- "user", "assistant", "system"
-  , messageContent :: Text
+-- | Message in LLM request (runtime format, different from Language).
+data LLMMessage = LLMMessage
+  { llmMessageRole :: Text  -- "user", "assistant", "system"
+  , llmMessageContent :: Text
   }
   deriving (Eq, Show, Generic)
 
@@ -110,10 +99,6 @@ data ApiKeyError
   = ApiKeyNotFound Text
   | ApiKeyInvalid Text
   deriving (Eq, Show)
-
--- | Create a model identifier for a specific provider.
-createModel :: Text -> Provider -> Model
-createModel modelId provider = Model { modelId = modelId, modelProvider = provider }
 
 -- | Create an OpenAI client from API key.
 createOpenAIClient :: Text -> LLMClient
@@ -159,16 +144,16 @@ loadApiKeyFromEnv envVar = do
       envVar <> " environment variable not set (checked both environment and .env file)"
 
 -- | Build an LLM request for OpenAI format.
-buildOpenAIRequest :: Model -> Text -> [Message] -> Maybe Double -> Maybe Int -> LLMRequest
+buildOpenAIRequest :: Model -> Text -> [LLMMessage] -> Maybe Double -> Maybe Int -> LLMRequest
 buildOpenAIRequest model systemInstruction messages temperature maxTokens = LLMRequest
   { requestModel = modelId model
-  , requestMessages = Message "system" systemInstruction : messages
+  , requestMessages = LLMMessage "system" systemInstruction : messages
   , requestTemperature = temperature
   , requestMaxTokens = maxTokens
   }
 
 -- | Build an LLM request (generic, delegates to provider-specific builder).
-buildRequest :: Model -> Text -> [Message] -> Maybe Double -> Maybe Int -> LLMRequest
+buildRequest :: Model -> Text -> [LLMMessage] -> Maybe Double -> Maybe Int -> LLMRequest
 buildRequest = buildOpenAIRequest  -- For now, default to OpenAI format
 
 -- | Send a request to the LLM API.
@@ -250,23 +235,23 @@ parseResponse provider value = case provider of
   Google -> Left "Google response parsing not yet implemented"
 
 -- | Call LLM API (high-level interface).
-callLLM :: LLMClient -> Model -> Text -> [Message] -> Maybe Double -> Maybe Int -> IO (Either Text LLMResponse)
+callLLM :: LLMClient -> Model -> Text -> [LLMMessage] -> Maybe Double -> Maybe Int -> IO (Either Text LLMResponse)
 callLLM client model systemInstruction messages temperature maxTokens = do
   let request = buildRequest model systemInstruction messages temperature maxTokens
   sendRequest client request
 
 -- Aeson instances for JSON serialization
-instance ToJSON Message where
+instance ToJSON LLMMessage where
   toJSON msg = object
-    [ "role" .= messageRole msg
-    , "content" .= messageContent msg
+    [ "role" .= llmMessageRole msg
+    , "content" .= llmMessageContent msg
     ]
 
-instance FromJSON Message where
-  parseJSON = withObject "Message" $ \obj -> do
+instance FromJSON LLMMessage where
+  parseJSON = withObject "LLMMessage" $ \obj -> do
     role <- obj .: "role"
     content <- obj .: "content"
-    return $ Message role content
+    return $ LLMMessage role content
 
 instance ToJSON LLMRequest where
   toJSON req = object $

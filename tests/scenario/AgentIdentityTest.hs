@@ -7,7 +7,7 @@ module AgentIdentityTest where
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import PatternAgent.Agent
+import PatternAgent.Language.Core
 
 -- | Scenario: Create agent with name, description, and model
 --

@@ -16,7 +16,7 @@
 Create a tool using gram type signature.
 
 ```haskell
-import PatternAgent.Tool
+import PatternAgent.Language.Core
 import Data.Text
 
 -- Define the sayHello tool with gram type signature (curried form)
@@ -41,7 +41,7 @@ sayHello = createTool
 Create the executable tool implementation.
 
 ```haskell
-import PatternAgent.Tool
+import PatternAgent.Runtime.ToolLibrary
 import Data.Aeson
 import Data.Text
 
@@ -70,9 +70,7 @@ sayHelloImpl = createToolImpl
 Create an agent and equip it with tools.
 
 ```haskell
-import PatternAgent.Agent
-import PatternAgent.LLM
-import PatternAgent.Tool
+import PatternAgent.Language.Core
 
 -- Create agent with sayHello tool (Pattern)
 let agent = createAgent
@@ -96,9 +94,9 @@ let agent = createAgent
 Execute an agent with tool library and see it use tools automatically.
 
 ```haskell
-import PatternAgent.Execution
-import PatternAgent.Context
-import PatternAgent.Tool
+import PatternAgent.Runtime.Execution
+import PatternAgent.Runtime.Context
+import PatternAgent.Runtime.ToolLibrary
 
 -- Create tool library with sayHello implementation
 let toolLibrary = registerTool "sayHello" sayHelloImpl emptyToolLibrary
@@ -139,7 +137,7 @@ Result: String "Hello, User! Nice to meet you."
 Maintain conversation context across multiple exchanges with tool usage.
 
 ```haskell
-import PatternAgent.Context
+import PatternAgent.Runtime.Context
 
 -- First message
 let context1 = emptyContext
@@ -181,11 +179,11 @@ Complete hello world example demonstrating the full tool execution flow.
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import PatternAgent.Agent
-import PatternAgent.Execution
-import PatternAgent.Context
-import PatternAgent.LLM
-import PatternAgent.Tool
+import PatternAgent.Language.Core
+import PatternAgent.Runtime.Execution
+import PatternAgent.Runtime.Context
+import PatternAgent.Runtime.LLM
+import PatternAgent.Runtime.ToolLibrary
 import Data.Aeson
 import Data.Text (Text, pack, unpack)
 import qualified Data.Text as T

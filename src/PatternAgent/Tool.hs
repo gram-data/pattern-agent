@@ -1,23 +1,18 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
--- | Tool system for LLM agents.
+-- | Tool module (deprecated - use Language/Runtime modules instead).
 --
--- This module provides tool abstraction and function tool implementation
--- for equipping agents with capabilities beyond their base LLM functionality.
+-- This module is a placeholder. Tool functionality is now split across:
+-- - PatternAgent.Language.Core: Tool (Pattern Subject) creation and lenses
+-- - PatternAgent.Runtime.ToolLibrary: ToolImpl and ToolLibrary
 --
--- Status: Phase 1 setup complete. Implementation will follow in Phase 2.
--- See specs/003-hello-world-agent/ for design details.
---
--- This module will provide:
--- - ToolSpecification type (serializable tool descriptions)
--- - Tool type (executable tool implementations)
--- - ToolLibrary type (tool registry)
--- - Type signature parsing and JSON schema generation
--- - Tool creation and validation functions
-
+-- @deprecated Use PatternAgent.Language.Core and PatternAgent.Runtime.ToolLibrary
 module PatternAgent.Tool
-  ( -- Types will be exported here in Phase 2
+  ( -- Re-export from Language and Runtime modules
+    module PatternAgent.Language.Core
+  , module PatternAgent.Runtime.ToolLibrary
   ) where
 
--- Implementation will be added in Phase 2: Foundational
+import PatternAgent.Language.Core
+import PatternAgent.Runtime.ToolLibrary

@@ -60,13 +60,20 @@ library
 
     -- Modules exported by the library.
     exposed-modules:
+        -- Core modules
         PatternAgent.Core,
         PatternAgent.Types,
-        PatternAgent.LLM,
-        PatternAgent.Agent,
-        PatternAgent.Execution,
-        PatternAgent.Context,
-        PatternAgent.Env
+        PatternAgent.Env,
+        -- Language modules (portable specification)
+        PatternAgent.Language.Core,
+        PatternAgent.Language.Schema,
+        PatternAgent.Language.TypeSignature,
+        PatternAgent.Language.Serialization,
+        -- Runtime modules (Haskell-specific implementation)
+        PatternAgent.Runtime.Execution,
+        PatternAgent.Runtime.ToolLibrary,
+        PatternAgent.Runtime.LLM,
+        PatternAgent.Runtime.Context
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -87,7 +94,8 @@ library
         text >=2.0,
         mtl ^>=2.3,
         directory ^>=1.3,
-        containers ^>=0.6
+        containers ^>=0.6,
+        lens ^>=5.0
 
     -- Directories containing source files.
     hs-source-dirs:   src

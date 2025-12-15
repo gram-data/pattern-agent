@@ -10,7 +10,7 @@ module PatternAgent.Types
   ) where
 
 import Pattern (Pattern)
-import PatternAgent.Agent (Agent)
+import PatternAgent.Language.Core (Agent)
 
 -- | Main type alias for Pattern<Agent>.
 -- 
@@ -18,7 +18,7 @@ import PatternAgent.Agent (Agent)
 -- - Atomic: A single agent with no sub-agents (elements == [])
 -- - Compound: A multi-agent system with sub-agents (elements /= [])
 --
--- The Agent type is defined in PatternAgent.Agent and represents
--- an LLM-powered agent with identity, model, and instructions.
+-- The Agent type is defined in PatternAgent.Language.Core and represents
+-- an LLM-powered agent workflow specification (Pattern Subject).
 type PatternAgent = Pattern Agent
 

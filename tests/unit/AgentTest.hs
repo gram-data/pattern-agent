@@ -4,7 +4,7 @@ module AgentTest where
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import PatternAgent.Agent
+import PatternAgent.Language.Core
 
 testAgentCreation :: TestTree
 testAgentCreation = testGroup "Agent Creation"
