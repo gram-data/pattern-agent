@@ -5,7 +5,7 @@ import qualified PatternAgent.Runtime.LLM as LLM
 import PatternAgent.Language.Core (Model, createModel, Provider(OpenAI), Agent, agentTools, toolName, toolDescription, toolSchema)
 import PatternAgent.Language.Serialization (parseAgent)
 import PatternAgent.Runtime.Execution (executeAgentWithLibrary, AgentError(..), AgentResponse(..), ToolInvocation(..))
-import PatternAgent.Runtime.Context (emptyContext)
+import PatternAgent.Runtime.Context (emptyContext, addMessage, MessageRole(..), ConversationContext)
 import PatternAgent.Runtime.BuiltinTools (createToolLibraryFromAgent)
 import PatternAgent.Runtime.Logging (logDebug, logInfo, logError, logDebugJSON, loggerCLI)
 import PatternAgent.Runtime.Execution (ToolInvocation(..))
@@ -45,22 +45,22 @@ putFunctionCall toolName args = putStrLn $ "🛠️  " ++ T.unpack toolName ++ "
 -- | Command line mode.
 data CLIMode
   = StandardMode (Maybe String)  -- Standard mode with optional message
-  | AgentMode String String  -- Agent mode: gram file, message
+  | AgentMode String [String]  -- Agent mode: gram file, messages
 
--- | Parse command line arguments and extract mode, debug flag, and message.
+-- | Parse command line arguments and extract mode, debug flag, and messages.
 parseArgs :: [String] -> Either String (CLIMode, Bool)
-parseArgs args = go False Nothing Nothing args
+parseArgs args = go False [] Nothing args
   where
-    go debug msg agentFile [] = case (agentFile, msg) of
-      (Just file, Just m) -> Right (AgentMode file m, debug)
-      (Just file, Nothing) -> Left "Missing message for --agent mode"
-      (Nothing, Just m) -> Right (StandardMode (Just m), debug)
-      (Nothing, Nothing) -> Right (StandardMode Nothing, debug)
-    go _ msg agentFile ("--agent":file:rest) = go False msg (Just file) rest
+    go debug messages agentFile [] = case (agentFile, messages) of
+      (Just file, ms) | not (null ms) -> Right (AgentMode file ms, debug)
+      (Just file, []) -> Left "Missing message for --agent mode"
+      (Nothing, [m]) -> Right (StandardMode (Just m), debug)
+      (Nothing, []) -> Right (StandardMode Nothing, debug)
+      (Nothing, _) -> Right (StandardMode (Just (last messages)), debug)  -- Standard mode: take last message
+    go _ messages agentFile ("--agent":file:rest) = go False messages (Just file) rest
     go _ _ _ ("--agent":[]) = Left "Missing file path for --agent flag"
-    go _ msg agentFile ("--debug":rest) = go True msg agentFile rest
-    go debug Nothing agentFile (m:rest) = go debug (Just m) agentFile rest
-    go debug (Just _) agentFile (m:rest) = go debug (Just m) agentFile rest  -- Multiple messages, take last
+    go _ messages agentFile ("--debug":rest) = go True messages agentFile rest
+    go debug messages agentFile (m:rest) = go debug (messages ++ [m]) agentFile rest
 
 -- | Load gram file contents from disk.
 loadGramFile :: FilePath -> IO (Either String Text)
@@ -87,7 +87,7 @@ main = do
       exitFailure
     Right (mode, debug) -> case mode of
       StandardMode maybeMessage -> handleStandardMode debug maybeMessage
-      AgentMode gramFile message -> handleAgentMode gramFile message debug
+      AgentMode gramFile messages -> handleAgentMode gramFile messages debug
 
 -- | Handle standard mode (direct LLM interaction).
 handleStandardMode :: Bool -> Maybe String -> IO ()
@@ -161,9 +161,9 @@ handleStandardMode debug maybeMessage = case maybeMessage of
                 logDebug debug loggerCLI $ "Model: " <> LLM.responseModel response
               exitSuccess
 
--- | Handle agent mode (load agent from gram file and execute).
-handleAgentMode :: FilePath -> String -> Bool -> IO ()
-handleAgentMode gramFile message debug = do
+-- | Handle agent mode (load agent from gram file and execute with multiple messages).
+handleAgentMode :: FilePath -> [String] -> Bool -> IO ()
+handleAgentMode gramFile messages debug = do
   -- Load gram file
   gramContentResult <- loadGramFile gramFile
   case gramContentResult of
@@ -191,17 +191,68 @@ handleAgentMode gramFile message debug = do
               -- Execute agent with tool library
               when debug $ do
                 logInfo loggerCLI $ "Executing agent from: " <> T.pack gramFile
-                logInfo loggerCLI $ "User message: " <> pack message
               logDebug debug loggerCLI $ "Agent execution: tools=" <> T.pack (show (length (view agentTools agent)))
               
-              let userMessage = pack message
-              if not debug
-                then putUserMessage userMessage
-                else return ()
+              -- Process each message sequentially, maintaining conversation context
+              let processMessages :: ConversationContext -> [String] -> IO (Either AgentError ())
+                  processMessages _ [] = return $ Right ()
+                  processMessages context (msg:remaining) = do
+                    let userMessage = pack msg
+                    
+                    -- Show user message BEFORE executing (so user sees what they sent)
+                    if not debug
+                      then putUserMessage userMessage
+                      else logInfo loggerCLI $ "User message: " <> userMessage
+                    
+                    -- Execute agent with current message and context
+                    -- This will wait for complete response (including all tool calls)
+                    result <- executeAgentWithLibrary debug agent userMessage context toolLibrary
+                    
+                    case result of
+                      Left err -> return $ Left err
+                      Right response -> do
+                        -- Show tool calls in normal mode (these happened during execution)
+                        when (not debug) $ do
+                          mapM_ (\invocation -> do
+                            -- Convert arguments to JSON string
+                            let argsJson = TL.unpack $ decodeUtf8 $ encode (invocationArgs invocation)
+                            putFunctionCall (invocationToolName invocation) (T.pack argsJson)
+                            ) (responseToolsUsed response)
+                        
+                        -- Show agent response (complete conversational reply)
+                        if debug
+                          then logInfo loggerCLI $ "Agent response: " <> responseContent response
+                          else putAgentResponse (responseContent response)
+                        
+                        -- Log tools used if any (debug mode only)
+                        when debug $ do
+                          when (not (null (responseToolsUsed response))) $ do
+                            logDebug debug loggerCLI "Tools used:"
+                            mapM_ (\invocation -> do
+                              logDebug debug loggerCLI $ "  Tool: " <> invocationToolName invocation
+                              case invocationResult invocation of
+                                Right result -> logDebug debug loggerCLI $ "    Result: " <> T.pack (show result)
+                                Left err -> logError loggerCLI $ "    Error: " <> err
+                              ) (responseToolsUsed response)
+                        
+                        -- Update context with user message and assistant response for next iteration
+                        -- Note: executeAgentWithLibrary adds the user message and assistant response internally,
+                        -- but doesn't return the updated context. We need to reconstruct it.
+                        -- The context should include: previous messages + user message + assistant response
+                        case addMessage UserRole userMessage context of
+                          Left err -> return $ Left $ ValidationError err
+                          Right contextWithUser -> do
+                            case addMessage AssistantRole (responseContent response) contextWithUser of
+                              Left err -> return $ Left $ ValidationError err
+                              Right updatedContext -> do
+                                -- Process remaining messages with updated context
+                                -- This happens AFTER the complete response is shown
+                                processMessages updatedContext remaining
               
-              result <- executeAgentWithLibrary debug agent userMessage emptyContext toolLibrary
+              -- Start processing messages with empty context
+              finalResult <- processMessages emptyContext messages
               
-              case result of
+              case finalResult of
                 Left (LLMAPIError err) -> do
                   logError loggerCLI $ "LLM API Error: " <> err
                   exitFailure
@@ -215,32 +266,7 @@ handleAgentMode gramFile message debug = do
                   logError loggerCLI $ "Configuration Error: " <> err
                   logError loggerCLI "Please set the OPENAI_API_KEY environment variable: export OPENAI_API_KEY=your-api-key-here"
                   exitFailure
-                Right response -> do
-                  -- Show tool calls in normal mode
-                  when (not debug) $ do
-                    mapM_ (\invocation -> do
-                      -- Convert arguments to JSON string
-                      let argsJson = TL.unpack $ decodeUtf8 $ encode (invocationArgs invocation)
-                      putFunctionCall (invocationToolName invocation) (T.pack argsJson)
-                      ) (responseToolsUsed response)
-                  
-                  -- Show agent response
-                  if debug
-                    then logInfo loggerCLI $ "Agent response: " <> responseContent response
-                    else putAgentResponse (responseContent response)
-                  
-                  -- Log tools used if any (debug mode only)
-                  when debug $ do
-                    when (not (null (responseToolsUsed response))) $ do
-                      logDebug debug loggerCLI "Tools used:"
-                      mapM_ (\invocation -> do
-                        logDebug debug loggerCLI $ "  Tool: " <> invocationToolName invocation
-                        case invocationResult invocation of
-                          Right result -> logDebug debug loggerCLI $ "    Result: " <> T.pack (show result)
-                          Left err -> logError loggerCLI $ "    Error: " <> err
-                        ) (responseToolsUsed response)
-                  
-                  exitSuccess
+                Right () -> exitSuccess
 
 -- | Print usage message.
 printUsage :: IO ()
