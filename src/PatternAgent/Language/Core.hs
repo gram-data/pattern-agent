@@ -109,7 +109,7 @@ agentModel = lens getter setter
   where
     getter p = case Map.lookup "model" (properties (value p)) of
       Just (VString modelStr) -> parseModel (T.pack modelStr)
-      _ -> Model { modelId = "gpt-3.5-turbo", modelProvider = OpenAI }  -- Default
+      _ -> Model { modelId = "gpt-4o-mini", modelProvider = OpenAI }  -- Default
     setter p model = p
       { value = (value p)
           { properties = Map.insert "model" (VString (T.unpack (modelToString model))) (properties (value p))
@@ -192,7 +192,10 @@ toolSchema = lens getter setter
       [] -> object ["type" .= ("object" :: Text), "properties" .= object []]
       [typeSigElem] -> case extractTypeSignatureFromPattern typeSigElem of
         Right typeSig -> typeSignatureToJSONSchema typeSig
-        Left _ -> object ["type" .= ("object" :: Text), "properties" .= object []]  -- Default empty schema on error
+        Left err -> do
+          -- Debug: Log the error (but we can't use IO in a pure lens, so we'll handle this differently)
+          -- For now, return empty schema - the error will be logged elsewhere
+          object ["type" .= ("object" :: Text), "properties" .= object []]
       _ -> object ["type" .= ("object" :: Text), "properties" .= object []]  -- Multiple elements not expected
     setter p _ = p  -- Schema is computed, cannot be set directly
 

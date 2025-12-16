@@ -92,14 +92,14 @@ helloWorldToolLibrary = registerTool "sayHello" sayHelloImpl emptyToolLibrary
 -- | helloWorldAgent - Agent that uses the sayHello tool.
 --
 -- This agent is configured to:
--- - Use OpenAI gpt-3.5-turbo model
+-- - Use OpenAI gpt-4o-mini model
 -- - Have friendly conversations with users
 -- - Use the sayHello tool when responding to greetings
 helloWorldAgent :: Agent
 helloWorldAgent = case createAgent
   "hello_world_agent"
   (Just "A friendly agent that uses the sayHello tool to greet users")
-  (createModel "gpt-3.5-turbo" OpenAI)
+  (createModel "gpt-4o-mini" OpenAI)
   "You are a friendly assistant. Have friendly conversations with the user. When the user greets you or says hello, use the `sayHello` tool to respond with a personalized greeting."
   [sayHello]
   of

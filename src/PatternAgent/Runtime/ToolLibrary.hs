@@ -26,8 +26,8 @@ module PatternAgent.Runtime.ToolLibrary
     -- * Tool Binding
   , bindTool
     -- * Validation
-  , validateToolArgs
-  ) where
+    , validateToolArgs
+    ) where
 
 import PatternAgent.Language.Core (Tool, toolName, toolDescription, toolSchema)
 import Data.Aeson (Value(..), object, (.=))

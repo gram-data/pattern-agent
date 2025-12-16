@@ -274,34 +274,34 @@
 ### Tests for Phase 8 (Principle 3: Dual Testing Strategy) ⚠️
 
 **Scenario Tests**:
-- [ ] T118 [P] [CLI] Scenario test: CLI loads agent from gram file and executes with tool support in tests/scenario/CLIAgentExecutionTest.hs
-- [ ] T119 [P] [CLI] Scenario test: CLI executes hello world agent with sayHello tool and produces greeting in tests/scenario/CLIAgentExecutionTest.hs
-- [ ] T120 [P] [CLI] Scenario test: CLI handles missing gram file gracefully with error message in tests/scenario/CLIAgentExecutionTest.hs
-- [ ] T121 [P] [CLI] Scenario test: CLI handles invalid gram file format gracefully with error message in tests/scenario/CLIAgentExecutionTest.hs
+- [X] T118 [P] [CLI] Scenario test: CLI loads agent from gram file and executes with tool support in tests/scenario/CLIAgentExecutionTest.hs
+- [X] T119 [P] [CLI] Scenario test: CLI executes hello world agent with sayHello tool and produces greeting in tests/scenario/CLIAgentExecutionTest.hs
+- [X] T120 [P] [CLI] Scenario test: CLI handles missing gram file gracefully with error message in tests/scenario/CLIAgentExecutionTest.hs
+- [X] T121 [P] [CLI] Scenario test: CLI handles invalid gram file format gracefully with error message in tests/scenario/CLIAgentExecutionTest.hs
 
 **Unit Tests**:
-- [ ] T122 [P] [CLI] Unit test: Command line argument parsing for --agent flag in tests/unit/CLITest.hs
-- [ ] T123 [P] [CLI] Unit test: Gram file loading and parsing in tests/unit/CLITest.hs
-- [ ] T124 [P] [CLI] Unit test: Agent extraction from parsed gram file in tests/unit/CLITest.hs
-- [ ] T125 [P] [CLI] Unit test: Tool library creation from agent tools in tests/unit/CLITest.hs
-- [ ] T126 [P] [CLI] Unit test: Error handling for file not found in tests/unit/CLITest.hs
-- [ ] T127 [P] [CLI] Unit test: Error handling for invalid gram syntax in tests/unit/CLITest.hs
+- [X] T122 [P] [CLI] Unit test: Command line argument parsing for --agent flag in tests/unit/CLITest.hs
+- [X] T123 [P] [CLI] Unit test: Gram file loading and parsing in tests/unit/CLITest.hs
+- [X] T124 [P] [CLI] Unit test: Agent extraction from parsed gram file in tests/unit/CLITest.hs
+- [X] T125 [P] [CLI] Unit test: Tool library creation from agent tools in tests/unit/CLITest.hs
+- [X] T126 [P] [CLI] Unit test: Error handling for file not found in tests/unit/CLITest.hs
+- [X] T127 [P] [CLI] Unit test: Error handling for invalid gram syntax in tests/unit/CLITest.hs
 
 ### Implementation for Phase 8 (Principle 4: Expressiveness and Correctness)
 
-- [ ] T128 [CLI] Update parseArgs function in app/Main.hs to support --agent flag with file path argument
-- [ ] T129 [CLI] Implement loadGramFile function in app/Main.hs to read and return gram file contents
-- [ ] T130 [CLI] Implement parseAgentFromGram function in app/Main.hs to parse gram file and extract Agent (Pattern)
-- [ ] T131 [CLI] Implement createToolLibraryFromAgent function in app/Main.hs to create ToolLibrary from agent's tools (initially supports sayHello tool for hello world agent)
-- [ ] T132 [CLI] Update main function in app/Main.hs to handle --agent mode: load gram file, parse agent, create tool library, execute agent
-- [ ] T133 [CLI] Add error handling for missing --agent file path in app/Main.hs
-- [ ] T134 [CLI] Add error handling for file read errors in app/Main.hs
-- [ ] T135 [CLI] Add error handling for gram parsing errors in app/Main.hs
-- [ ] T136 [CLI] Add error handling for agent execution errors in app/Main.hs
-- [ ] T137 [CLI] Update usage message in app/Main.hs to document --agent flag: `pattern-agent --agent <gram-file> [--debug] <message>`
-- [ ] T138 [CLI] Ensure --agent mode works with existing --debug flag in app/Main.hs
-- [ ] T139 [CLI] Add validation that gram file contains exactly one Agent pattern in app/Main.hs
-- [ ] T140 [CLI] Add support for hello world agent: detect sayHello tool, create ToolImpl, register in ToolLibrary in app/Main.hs
+- [X] T128 [CLI] Update parseArgs function in app/Main.hs to support --agent flag with file path argument
+- [X] T129 [CLI] Implement loadGramFile function in app/Main.hs to read and return gram file contents
+- [X] T130 [CLI] Implement parseAgentFromGram function in app/Main.hs to parse gram file and extract Agent (Pattern)
+- [X] T131 [CLI] Implement createToolLibraryFromAgent function in app/Main.hs to create ToolLibrary from agent's tools (initially supports sayHello tool for hello world agent)
+- [X] T132 [CLI] Update main function in app/Main.hs to handle --agent mode: load gram file, parse agent, create tool library, execute agent
+- [X] T133 [CLI] Add error handling for missing --agent file path in app/Main.hs
+- [X] T134 [CLI] Add error handling for file read errors in app/Main.hs
+- [X] T135 [CLI] Add error handling for gram parsing errors in app/Main.hs
+- [X] T136 [CLI] Add error handling for agent execution errors in app/Main.hs
+- [X] T137 [CLI] Update usage message in app/Main.hs to document --agent flag: `pattern-agent --agent <gram-file> [--debug] <message>`
+- [X] T138 [CLI] Ensure --agent mode works with existing --debug flag in app/Main.hs
+- [X] T139 [CLI] Add validation that gram file contains exactly one Agent pattern in app/Main.hs
+- [X] T140 [CLI] Add support for hello world agent: detect sayHello tool, create ToolImpl, register in ToolLibrary in app/Main.hs
 
 **Checkpoint**: At this point, developers can execute agents from gram files via CLI. The hello world agent with sayHello tool should work end-to-end.
 

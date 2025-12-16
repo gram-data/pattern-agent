@@ -64,6 +64,56 @@ Areas under active exploration:
 
 Early development - establishing foundations through practical examples.
 
+## Running the CLI
+
+The pattern-agent CLI can be used to execute agents from gram files or interact directly with LLMs.
+
+### Building
+
+```bash
+cabal build
+```
+
+### Usage
+
+**Important:** When using `cabal exec pattern-agent`, you must use `--` to separate cabal's flags from pattern-agent's flags:
+
+```bash
+# Standard mode (direct LLM interaction)
+cabal exec pattern-agent -- "What is the capital of France?"
+
+# With debug output
+cabal exec pattern-agent -- --debug "What is the capital of France?"
+
+# Agent mode (load agent from gram file with tool support)
+cabal exec pattern-agent -- --agent examples/helloAgent.gram "Hello!"
+
+# Agent mode with debug
+cabal exec pattern-agent -- --agent examples/helloAgent.gram --debug "Hello!"
+```
+
+### Prerequisites
+
+Set the `OPENAI_API_KEY` environment variable:
+
+```bash
+export OPENAI_API_KEY=your-api-key-here
+```
+
+### After Installation
+
+If you install the executable:
+
+```bash
+cabal install --installdir=$HOME/.local/bin
+```
+
+You can then run it directly without `cabal exec`:
+
+```bash
+pattern-agent --agent examples/helloAgent.gram "Hello!"
+```
+
 ## Future Directions
 
 - Decomposition toolkit with factorization strategies

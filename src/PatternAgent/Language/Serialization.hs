@@ -46,6 +46,7 @@ parseGram gram = case Gram.fromGram (T.unpack gram) of
 --
 -- Parses a gram string and validates it represents an Agent pattern.
 -- The parsed pattern must have the "Agent" label.
+-- Tool elements are normalized to infer FunctionType labels when missing.
 parseAgent :: Text -> Either Text Agent
 parseAgent gram = do
   pattern <- parseGram gram
@@ -53,7 +54,18 @@ parseAgent gram = do
   let subject = value pattern
   unless ("Agent" `Set.member` labels subject) $
     Left "Parsed pattern does not have 'Agent' label"
-  Right pattern
+  
+  -- Normalize type signature elements in tool patterns by inferring FunctionType labels
+  let normalizedElements = map normalizeToolPattern (elements pattern)
+  let normalizedPattern = pattern { elements = normalizedElements }
+  
+  Right normalizedPattern
+  where
+    -- Normalize a tool pattern by normalizing its type signature elements
+    normalizeToolPattern :: PatternSubject -> PatternSubject
+    normalizeToolPattern toolPattern =
+      let normalizedElements = map normalizeTypeSignaturePattern (elements toolPattern)
+      in toolPattern { elements = normalizedElements }
 
 -- | Normalize type signature pattern by inferring FunctionType label.
 --

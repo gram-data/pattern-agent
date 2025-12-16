@@ -24,7 +24,7 @@ module PatternAgent.Runtime.Execution
   , toolsToFunctions
   ) where
 
-import PatternAgent.Language.Core (Agent, Tool, agentModel, agentInstruction, agentTools, toolName, toolDescription, toolSchema)
+import PatternAgent.Language.Core (Agent, Tool, Model(..), agentModel, agentInstruction, agentTools, toolName, toolDescription, toolSchema)
 import PatternAgent.Runtime.LLM (LLMClient, LLMMessage(..), LLMResponse(..), FunctionCall(..), callLLM, createClientForModel, ApiKeyError(..))
 import PatternAgent.Runtime.Context
   ( ConversationContext
@@ -33,12 +33,14 @@ import PatternAgent.Runtime.Context
   , addMessage
   )
 import PatternAgent.Runtime.ToolLibrary (ToolLibrary, ToolImpl, bindTool, lookupTool, validateToolArgs, toolImplInvoke, toolImplName, toolImplSchema)
-import Data.Aeson (Value(..), object, (.=), decode, encode)
+import Data.Aeson (Value(..), object, (.=), decode, encode, ToJSON(..))
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.ByteString.Lazy as BL
 import GHC.Generics (Generic)
+import PatternAgent.Runtime.Logging (logDebug, logInfo, logDebugJSON, loggerExecution)
+import PatternAgent.Runtime.LLM (buildRequest, LLMRequest(..), LLMResponse(..))
 import Control.Lens (view)
 import Control.Monad (mapM, when)
 import Control.Exception (try, SomeException)
@@ -66,6 +68,21 @@ data ToolInvocation = ToolInvocation
   , invocationResult :: Either Text Value
   }
   deriving (Eq, Show, Generic)
+
+instance ToJSON ToolInvocation where
+  toJSON inv = object
+    [ "tool_name" .= invocationToolName inv
+    , "args" .= invocationArgs inv
+    , "result" .= case invocationResult inv of
+        Left err -> object ["error" .= err]
+        Right val -> object ["success" .= val]
+    ]
+
+instance ToJSON AgentResponse where
+  toJSON resp = object
+    [ "content" .= responseContent resp
+    , "tools_used" .= responseToolsUsed resp
+    ]
 
 -- | Convert Context.Message to LLM.LLMMessage format.
 contextToLLMMessage :: Message -> LLMMessage
@@ -113,12 +130,13 @@ toolsToFunctions tools = map toolToFunction tools
 -- Binds tools from agent to implementations in library, then executes.
 -- Implements iterative execution loop: detect tool call → validate → invoke → send result to LLM → get final response.
 executeAgentWithLibrary
-  :: Agent                -- ^ agent: Agent with Tools (Pattern)
+  :: Bool                 -- ^ debug: Enable debug logging
+  -> Agent                -- ^ agent: Agent with Tools (Pattern)
   -> Text                 -- ^ userInput: User's input message
   -> ConversationContext  -- ^ context: Previous conversation context
   -> ToolLibrary          -- ^ library: Tool library for binding
   -> IO (Either AgentError AgentResponse)
-executeAgentWithLibrary agent userInput context library = do
+executeAgentWithLibrary debug agent userInput context library = do
   -- Validate input
   if T.null userInput
     then return $ Left $ ValidationError "Empty user input"
@@ -137,26 +155,28 @@ executeAgentWithLibrary agent userInput context library = do
               ApiKeyInvalid msg -> msg
             Right client -> do
               -- T108: Add user message to context (first message in conversation)
+              logDebug debug loggerExecution $ "Adding user message to context: " <> userInput
               let userMessageResult = addMessage UserRole userInput context
               case userMessageResult of
                 Left err -> return $ Left $ ValidationError err
                 Right updatedContext -> do
                   -- Execute iterative loop
-                  executeIteration client agent boundTools updatedContext [] 0
+                  executeIteration debug client agent boundTools updatedContext [] 0
   where
     -- Maximum iteration limit to prevent infinite loops
     maxIterations = 10
     
     -- Execute one iteration of the tool execution loop
     executeIteration
-      :: LLMClient
+      :: Bool              -- ^ debug: Enable debug logging
+      -> LLMClient
       -> Agent
       -> [ToolImpl]
       -> ConversationContext
       -> [ToolInvocation]  -- Accumulated tool invocations
       -> Int               -- Current iteration count
       -> IO (Either AgentError AgentResponse)
-    executeIteration client agent boundTools context toolInvocations iteration
+    executeIteration debug client agent boundTools context toolInvocations iteration
       | iteration >= maxIterations = return $ Left $ ToolError "Maximum iteration limit reached"
       | otherwise = do
           -- Build LLM request
@@ -168,16 +188,37 @@ executeAgentWithLibrary agent userInput context library = do
           let functions = if null tools then Nothing else Just (toolsToFunctions tools)
           let messages = contextToLLMMessages context  -- Full conversation history including tool invocations
           
+          -- Build LLM request
+          let llmRequest = buildRequest model instruction messages Nothing Nothing functions
+          
+          -- DEBUG: Log conversation context and LLM request details
+          logDebug debug loggerExecution "Conversation context before LLM call:"
+          mapM_ (\msg -> do
+            let msgType = case messageRole msg of
+                  UserRole -> "user"
+                  AssistantRole -> "assistant"
+                  FunctionRole toolName -> "function:" <> toolName
+            logDebug debug loggerExecution $ "  [" <> msgType <> "] " <> messageContent msg
+            -- Log full message structure as JSON
+            let llmMsg = contextToLLMMessage msg
+            logDebugJSON debug loggerExecution ("Message: " <> msgType) (toJSON llmMsg)
+            ) context
+          logDebug debug loggerExecution $ "LLM call: model=" <> modelId model <> ", messages=" <> T.pack (show (length messages)) <> ", tools=" <> T.pack (show (maybe 0 length functions))
+          logDebugJSON debug loggerExecution "LLM Request:" (toJSON llmRequest)
+          
           -- Call LLM
           llmResult <- callLLM client model instruction messages Nothing Nothing functions
           case llmResult of
             Left err -> return $ Left $ LLMAPIError err
             Right llmResponse -> do
+              logDebug debug loggerExecution $ "LLM response: text=" <> responseText llmResponse <> ", function_call=" <> T.pack (show (responseFunctionCall llmResponse))
+              logDebugJSON debug loggerExecution "LLM Response:" (toJSON llmResponse)
+              
               -- Check if function call is present
               case responseFunctionCall llmResponse of
                 Just functionCall -> do
                   -- Tool call detected - invoke tool
-                  toolInvocationResult <- invokeToolFromFunctionCall functionCall boundTools
+                  toolInvocationResult <- invokeToolFromFunctionCall debug functionCall boundTools
                   case toolInvocationResult of
                     Left err -> return $ Left err
                     Right invocation -> do
@@ -186,6 +227,8 @@ executeAgentWithLibrary agent userInput context library = do
                       let assistantContent = if T.null (responseText llmResponse)
                             then "Calling " <> functionCallName functionCall
                             else responseText llmResponse
+                      logDebug debug loggerExecution $ "Adding assistant message to context: " <> assistantContent
+                      logDebugJSON debug loggerExecution "Tool invocation:" (toJSON invocation)
                       let assistantMsgResult = addMessage AssistantRole assistantContent context
                       case assistantMsgResult of
                         Left err -> return $ Left $ ValidationError err
@@ -195,15 +238,17 @@ executeAgentWithLibrary agent userInput context library = do
                           let functionContent = case invocationResult invocation of
                                 Right val -> T.pack $ show val  -- Simplified - would use proper JSON encoding
                                 Left err -> "Error: " <> err
+                          logDebug debug loggerExecution $ "Adding function message to context: tool=" <> invocationToolName invocation <> ", content=" <> functionContent
                           let functionMsgResult = addMessage (FunctionRole (invocationToolName invocation)) functionContent contextWithAssistant
                           case functionMsgResult of
                             Left err -> return $ Left $ ValidationError err
                             Right contextWithFunction -> do
                               -- T106: Continue iteration with updated context (context is passed through loop)
-                              executeIteration client agent boundTools contextWithFunction (invocation : toolInvocations) (iteration + 1)
+                              executeIteration debug client agent boundTools contextWithFunction (invocation : toolInvocations) (iteration + 1)
                 
                 Nothing -> do
                   -- No function call - final text response
+                  logDebug debug loggerExecution $ "Final assistant response (no function call): " <> responseText llmResponse
                   -- T108: Add final assistant response to context
                   let finalContent = responseText llmResponse
                   if T.null finalContent
@@ -222,10 +267,11 @@ executeAgentWithLibrary agent userInput context library = do
     
     -- Invoke tool from function call
     invokeToolFromFunctionCall
-      :: FunctionCall
+      :: Bool              -- ^ debug: Enable debug logging
+      -> FunctionCall
       -> [ToolImpl]
       -> IO (Either AgentError ToolInvocation)
-    invokeToolFromFunctionCall functionCall boundTools = do
+    invokeToolFromFunctionCall debug functionCall boundTools = do
       -- Find tool implementation
       let toolName = functionCallName functionCall
       let toolImpl = findToolImpl toolName boundTools
@@ -237,6 +283,10 @@ executeAgentWithLibrary agent userInput context library = do
           let argsValue = case decode (BL.fromStrict $ TE.encodeUtf8 argsJson) of
                 Just val -> val
                 Nothing -> object []  -- Default to empty object if parsing fails
+          
+          logDebug debug loggerExecution $ "Function call: tool=" <> toolName <> ", raw_args=" <> argsJson
+          logDebugJSON debug loggerExecution "Function call details:" (toJSON functionCall)
+          logDebugJSON debug loggerExecution "Parsed arguments:" argsValue
           
           -- Validate arguments
           let schema = toolImplSchema impl

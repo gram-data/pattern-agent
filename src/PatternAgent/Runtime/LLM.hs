@@ -97,6 +97,14 @@ data LLMResponse = LLMResponse
   }
   deriving (Eq, Show, Generic)
 
+instance ToJSON LLMResponse where
+  toJSON resp = object $
+    [ "text" .= responseText resp
+    , "model" .= responseModel resp
+    ] ++
+    maybe [] (\u -> ["usage" .= u]) (responseUsage resp) ++
+    maybe [] (\fc -> ["function_call" .= fc]) (responseFunctionCall resp)
+
 -- | Token usage information.
 data Usage = Usage
   { usagePromptTokens :: Int

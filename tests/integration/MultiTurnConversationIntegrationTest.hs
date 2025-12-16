@@ -59,7 +59,7 @@ testAgentRemembersUserInfoFromHistory = testCase "Integration: Agent remembers u
   
   -- Turn 1: User says "My name is Bob"
   let context1 = emptyContext
-  result1 <- executeAgentWithLibrary helloWorldAgent "My name is Bob" context1 helloWorldToolLibrary
+  result1 <- executeAgentWithLibrary False helloWorldAgent "My name is Bob" context1 helloWorldToolLibrary
   case result1 of
     Left err -> assertFailure $ "Turn 1 failed: " ++ show err
     Right response1 -> do
@@ -73,7 +73,7 @@ testAgentRemembersUserInfoFromHistory = testCase "Integration: Agent remembers u
             Left err -> error $ "Failed to add user message: " ++ T.unpack err
       
       -- Turn 2: User says "the weather is nice today"
-      result2 <- executeAgentWithLibrary helloWorldAgent "the weather is nice today" context2 helloWorldToolLibrary
+      result2 <- executeAgentWithLibrary False helloWorldAgent "the weather is nice today" context2 helloWorldToolLibrary
       case result2 of
         Left err -> assertFailure $ "Turn 2 failed: " ++ show err
         Right response2 -> do
@@ -87,7 +87,7 @@ testAgentRemembersUserInfoFromHistory = testCase "Integration: Agent remembers u
                 Left err -> error $ "Failed to add user message: " ++ T.unpack err
           
           -- Turn 3: User says "oh, hello btw"
-          result3 <- executeAgentWithLibrary helloWorldAgent "oh, hello btw" context3 helloWorldToolLibrary
+          result3 <- executeAgentWithLibrary False helloWorldAgent "oh, hello btw" context3 helloWorldToolLibrary
           case result3 of
             Left err -> assertFailure $ "Turn 3 failed: " ++ show err
             Right response3 -> do
@@ -136,7 +136,7 @@ testSimpleGreetingWithTool = testCase "Integration: Simple greeting with tool ca
   view agentName helloWorldAgent @?= "hello_world_agent"
   
   -- Execute with a simple greeting
-  result <- executeAgentWithLibrary helloWorldAgent "Hello!" emptyContext helloWorldToolLibrary
+  result <- executeAgentWithLibrary False helloWorldAgent "Hello!" emptyContext helloWorldToolLibrary
   case result of
     Left err -> assertFailure $ "Execution failed: " ++ show err
     Right response -> do

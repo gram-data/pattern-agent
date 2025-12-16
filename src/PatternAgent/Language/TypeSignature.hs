@@ -20,7 +20,7 @@ module PatternAgent.Language.TypeSignature
   , validateTypeSignature
   ) where
 
-import Data.Aeson (Value(..), object, (.=), toJSON)
+import Data.Aeson (Value(..), object, (.=), toJSON, ToJSON(..))
 import qualified Data.Aeson.Key as Key
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -40,6 +40,12 @@ data TypeSignature = TypeSignature
   }
   deriving (Eq, Show)
 
+instance ToJSON TypeSignature where
+  toJSON (TypeSignature params returnType) = object
+    [ "params" .= params
+    , "return" .= returnType
+    ]
+
 -- | Function parameter representation.
 data Parameter = Parameter
   { paramName :: Maybe Text      -- ^ Parameter name (from identifier)
@@ -47,6 +53,13 @@ data Parameter = Parameter
   , paramDefault :: Maybe Value   -- ^ Default value (for optional parameters)
   }
   deriving (Eq, Show)
+
+instance ToJSON Parameter where
+  toJSON (Parameter name typeLabel defaultVal) = object $
+    [ "type" .= typeLabel
+    ] ++
+    maybe [] (\n -> ["name" .= n]) name ++
+    maybe [] (\d -> ["default" .= d]) defaultVal
 
 -- | Extract type signature from Pattern element.
 --

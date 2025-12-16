@@ -9,6 +9,7 @@ import PatternAgent.Runtime.ToolLibrary (ToolImpl(..), createToolImpl, toolImplN
 import HelloWorldExample (sayHello, sayHelloImpl, helloWorldToolLibrary)
 import PatternAgent.Language.TypeSignature (extractTypeSignatureFromPattern, typeSignatureToJSONSchema, TypeSignature(..), Parameter(..), createTypeNode, createFunctionTypePattern)
 import PatternAgent.Language.Core
+import PatternAgent.Language.Serialization (parseAgent, parseTool)
 import Subject.Core (Subject(..), Symbol(..))
 import Subject.Value (Value(..))
 import Data.Aeson (Value(..), object, (.=))
@@ -252,6 +253,132 @@ testAnonymousNodeIdentifiers = testGroup "Anonymous Node Identifiers"
       Set.member "String" (labels subject) @?= True
   ]
 
+-- | Unit test: Verify parseAgent normalizes tool type signatures.
+--
+-- Regression test for issue where tool type signatures weren't normalized
+-- when parsing agents from gram files, causing empty schemas.
+testParseAgentNormalizesToolTypeSignatures :: TestTree
+testParseAgentNormalizesToolTypeSignatures = testGroup "parseAgent Normalizes Tool Type Signatures"
+  [ testCase "parseAgent normalizes tool type signature with FunctionType label" $ do
+      let gramContent = T.unlines
+            [ "[hello_world_agent:Agent {"
+            , "  description: \"A friendly agent\","
+            , "  instruction: \"You are a friendly assistant.\","
+            , "  model: \"OpenAI/gpt-4o-mini\""
+            , "} |"
+            , "  [sayHello:Tool {"
+            , "    description: \"Returns a friendly greeting message for the given name\""
+            , "  } |"
+            , "    (personName::String {default:\"world\"})==>(::String)"
+            , "  ]"
+            , "]"
+            ]
+      
+      case parseAgent gramContent of
+        Right agent -> do
+          -- Verify agent was parsed
+          view agentName agent @?= "hello_world_agent"
+          
+          -- Verify agent has tool
+          let tools = view agentTools agent
+          length tools @?= 1
+          
+          let tool = head tools
+          view toolName tool @?= "sayHello"
+          
+          -- Verify tool has type signature element
+          let toolElements = elements tool
+          length toolElements @?= 1
+          
+          -- Verify type signature element has FunctionType label (normalization worked)
+          let typeSigElem = head toolElements
+          let typeSigSubject = value typeSigElem
+          Set.member "FunctionType" (labels typeSigSubject) @?= True
+          
+          -- Verify type signature can be extracted
+          case extractTypeSignatureFromPattern typeSigElem of
+            Right typeSig -> do
+              -- Verify it has the correct parameter
+              length (typeParams typeSig) @?= 1
+              let param = head (typeParams typeSig)
+              paramName param @?= Just "personName"
+              paramType param @?= "String"
+              paramDefault param @?= Just (String "world")
+            Left err -> assertFailure $ "Failed to extract type signature: " ++ T.unpack err
+          
+        Left err -> assertFailure $ "Failed to parse agent: " ++ T.unpack err
+  
+  , testCase "parseAgent produces tool schema with correct parameters" $ do
+      let gramContent = T.unlines
+            [ "[test_agent:Agent {"
+            , "  description: \"Test agent\","
+            , "  instruction: \"Test instruction\","
+            , "  model: \"OpenAI/gpt-4o-mini\""
+            , "} |"
+            , "  [greet:Tool {"
+            , "    description: \"Greet someone\""
+            , "  } |"
+            , "    (personName::String {default:\"world\"})==>(::String)"
+            , "  ]"
+            , "]"
+            ]
+      
+      case parseAgent gramContent of
+        Right agent -> do
+          let tools = view agentTools agent
+          length tools @?= 1
+          
+          let tool = head tools
+          let schema = view toolSchema tool
+          
+          -- Verify schema is an object and contains expected structure
+          -- We'll check by converting to string and looking for key indicators
+          let schemaStr = show schema
+          -- Verify schema has properties
+          assertBool ("Schema should contain 'properties': " ++ schemaStr) 
+            (T.isInfixOf "properties" (T.pack schemaStr))
+          -- Verify schema has personName
+          assertBool ("Schema should contain 'personName': " ++ schemaStr)
+            (T.isInfixOf "personName" (T.pack schemaStr))
+          -- Verify schema has type string for personName
+          assertBool ("Schema should contain 'string' type: " ++ schemaStr)
+            (T.isInfixOf "string" (T.pack schemaStr))
+          -- Verify schema has default world
+          assertBool ("Schema should contain default 'world': " ++ schemaStr)
+            (T.isInfixOf "world" (T.pack schemaStr))
+        Left err -> assertFailure $ "Failed to parse agent: " ++ T.unpack err
+  
+  , testCase "parseTool also normalizes type signatures" $ do
+      let gramContent = T.unlines
+            [ "[sayHello:Tool {"
+            , "  description: \"Returns a friendly greeting message for the given name\""
+            , "} |"
+            , "  (personName::String {default:\"world\"})==>(::String)"
+            , "]"
+            ]
+      
+      case parseTool gramContent of
+        Right tool -> do
+          -- Verify tool has type signature element
+          let toolElements = elements tool
+          length toolElements @?= 1
+          
+          -- Verify type signature element has FunctionType label
+          let typeSigElem = head toolElements
+          let typeSigSubject = value typeSigElem
+          Set.member "FunctionType" (labels typeSigSubject) @?= True
+          
+          -- Verify schema extraction works
+          let schema = view toolSchema tool
+          let schemaStr = show schema
+          -- Verify schema has properties and personName
+          assertBool ("Schema should contain 'properties': " ++ schemaStr)
+            (T.isInfixOf "properties" (T.pack schemaStr))
+          assertBool ("Schema should contain 'personName': " ++ schemaStr)
+            (T.isInfixOf "personName" (T.pack schemaStr))
+        Left err -> assertFailure $ "Failed to parse tool: " ++ T.unpack err
+  ]
+
 -- | Unit test: Programmatic type signature construction.
 testProgrammaticTypeSignature :: TestTree
 testProgrammaticTypeSignature = testGroup "Programmatic Type Signature Construction"
@@ -362,5 +489,6 @@ tests = testGroup "Tool Tests"
   , testTypeSignatureToJSONSchema
   , testAnonymousNodeIdentifiers
   , testProgrammaticTypeSignature
+  , testParseAgentNormalizesToolTypeSignatures
   ]
 
