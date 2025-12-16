@@ -32,7 +32,7 @@ parseTypeSig sig = case Gram.fromGram sig of
 -- | Scenario test: Create tool with name, description, schema, and invocation function.
 testCreateToolWithAllProperties :: TestTree
 testCreateToolWithAllProperties = testCase "Create tool with name, description, type signature" $ do
-  let typeSig = parseTypeSig "(personName::Text {default:\"world\"})==>(::String)"
+  let typeSig = parseTypeSig "(personName::String {default:\"world\"})==>(::String)"
   let result = createTool
         "sayHello"
         "Returns a friendly greeting message for the given name"
@@ -51,7 +51,7 @@ testCreateToolWithAllProperties = testCase "Create tool with name, description, 
 -- | Scenario test: Verify tool can be accessed and its properties retrieved.
 testToolPropertyAccess :: TestTree
 testToolPropertyAccess = testCase "Access tool properties via lenses" $ do
-  let typeSig = parseTypeSig "(name::Text)==>(::String)"
+  let typeSig = parseTypeSig "(name::String)==>(::String)"
   let result = createTool "testTool" "Test description" typeSig
   
   case result of
@@ -80,7 +80,7 @@ testToolPropertyAccess = testCase "Access tool properties via lenses" $ do
 testToolParameterValidation :: TestTree
 testToolParameterValidation = testCase "Validate tool parameters against schema" $ do
   -- Create a tool with a schema
-  let typeSig = parseTypeSig "(personName::Text)==>(::String)"
+  let typeSig = parseTypeSig "(personName::String)==>(::String)"
   let toolResult = createTool "sayHello" "Greeting tool" typeSig
   
   case toolResult of

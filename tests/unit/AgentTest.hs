@@ -90,7 +90,7 @@ testToolAssociation :: TestTree
 testToolAssociation = testGroup "Tool Association"
   [ testCase "Associate tool with agent" $ do
       let model = createModel "gpt-4" OpenAI
-      let typeSig = parseTypeSig "(x::Text)==>(::String)"
+      let typeSig = parseTypeSig "(x::String)==>(::String)"
       let toolResult = createTool "testTool" "Test tool" typeSig
       case toolResult of
         Right tool -> do
@@ -105,8 +105,8 @@ testToolAssociation = testGroup "Tool Association"
   
   , testCase "Retrieve tools from agent" $ do
       let model = createModel "gpt-4" OpenAI
-      let typeSig1 = parseTypeSig "(x::Text)==>(::String)"
-      let typeSig2 = parseTypeSig "(y::Int)==>(::String)"
+      let typeSig1 = parseTypeSig "(x::String)==>(::String)"
+      let typeSig2 = parseTypeSig "(y::Integer)==>(::String)"
       let tool1Result = createTool "tool1" "Tool 1" typeSig1
       let tool2Result = createTool "tool2" "Tool 2" typeSig2
       case (tool1Result, tool2Result) of
@@ -124,8 +124,8 @@ testToolAssociation = testGroup "Tool Association"
   
   , testCase "Tool name uniqueness validation" $ do
       let model = createModel "gpt-4" OpenAI
-      let typeSig1 = parseTypeSig "(x::Text)==>(::String)"
-      let typeSig2 = parseTypeSig "(y::Int)==>(::String)"
+      let typeSig1 = parseTypeSig "(x::String)==>(::String)"
+      let typeSig2 = parseTypeSig "(y::Integer)==>(::String)"
       let tool1Result = createTool "duplicate" "Tool 1" typeSig1
       let tool2Result = createTool "duplicate" "Tool 2" typeSig2
       case (tool1Result, tool2Result) of

@@ -52,7 +52,7 @@ data Parameter = Parameter
 -- The type signature is already parsed by gram-hs as a path notation element.
 -- This function extracts parameter and return type information from the Pattern structure.
 --
--- Example: Pattern element representing "(personName::Text {default:\"world\"})==>(::String)"
+-- Example: Pattern element representing "(personName::String {default:\"world\"})==>(::String)"
 -- Returns parsed representation or error message.
 extractTypeSignatureFromPattern :: Pattern Subject -> Either Text TypeSignature
 extractTypeSignatureFromPattern patternElem = do
@@ -94,28 +94,34 @@ parameterToJSONSchema (Parameter _ typeLabel defaultVal) =
     Nothing -> object ["type" .= typeLabelToJSONType typeLabel]
 
 -- | Convert gram type label to JSON Schema type string.
+--
+-- Type labels use capitalized JSON Schema type names (Gram label convention):
+-- String, Integer, Number, Boolean, Object, Array
+-- These map directly to JSON Schema types: string, integer, number, boolean, object, array
 typeLabelToJSONType :: Text -> Text
 typeLabelToJSONType label
-  | label == "Text" || label == "String" = "string"
-  | label == "Int" = "integer"
-  | label == "Double" = "number"
-  | label == "Bool" = "boolean"
+  | label == "String" = "string"
+  | label == "Integer" = "integer"
+  | label == "Number" = "number"
+  | label == "Boolean" = "boolean"
   | label == "Object" = "object"
   | label == "Array" = "array"
-  | otherwise = "string" -- Default to string for unknown types
+  | otherwise = error $ "Unsupported type label: " ++ T.unpack label ++ ". Supported types: String, Integer, Number, Boolean, Object, Array"
 
 -- | Create a type node pattern programmatically.
 --
 -- Creates a Pattern Subject representing a type node (parameter or return type).
--- For universal type nodes (like String, Int), use conventional identifiers
+-- For universal type nodes (like String, Integer), use conventional identifiers
 -- so all functions sharing the same return type reference the same node.
 --
+-- Type labels use capitalized JSON Schema type names: String, Integer, Number, Boolean, Object, Array
+--
 -- Examples:
--- - Parameter node: createTypeNode (Just "personName") "Text" (Just (VString "world"))
+-- - Parameter node: createTypeNode (Just "personName") "String" (Just (VString "world"))
 -- - Return type node: createTypeNode Nothing "String" Nothing
 createTypeNode
   :: Maybe Text        -- ^ Parameter name (Nothing for return types or anonymous)
-  -> Text              -- ^ Type label (Text, String, Int, etc.)
+  -> Text              -- ^ Type label (String, Integer, Number, Boolean, Object, Array)
   -> Maybe SubjectValue.Value  -- ^ Default value (for optional parameters, using Subject.Value)
   -> Pattern Subject   -- ^ Pattern Subject representing the type node
 createTypeNode paramName typeLabel defaultVal =
@@ -134,16 +140,18 @@ createTypeNode paramName typeLabel defaultVal =
 -- Creates a Pattern Subject representing a function type signature.
 -- The relationship pattern has FunctionType label and contains source and target nodes.
 --
--- Example: createFunctionTypePattern (Just "personName") "Text" (Just (SubjectValue.VString "world")) "String"
--- Creates: (personName::Text {default:"world"})==>(arbString::String)
+-- Type labels use capitalized JSON Schema type names: String, Integer, Number, Boolean, Object, Array
+--
+-- Example: createFunctionTypePattern (Just "personName") "String" (Just (SubjectValue.VString "world")) "String"
+-- Creates: (personName::String {default:"world"})==>(arbString::String)
 --
 -- Note: For curried functions (multiple parameters), this is a future enhancement.
 -- For now, this handles simple single-parameter functions.
 createFunctionTypePattern
   :: Maybe Text        -- ^ Parameter name (Nothing for anonymous parameter)
-  -> Text              -- ^ Parameter type label (Text, Int, etc.)
+  -> Text              -- ^ Parameter type label (String, Integer, Number, Boolean, Object, Array)
   -> Maybe SubjectValue.Value  -- ^ Default value (for optional parameters, using Subject.Value)
-  -> Text              -- ^ Return type label (String, Int, etc.)
+  -> Text              -- ^ Return type label (String, Integer, Number, Boolean, Object, Array)
   -> Pattern Subject   -- ^ Pattern Subject representing the function type
 createFunctionTypePattern paramName paramType defaultVal returnType =
   -- Create source node (parameter)
@@ -152,11 +160,11 @@ createFunctionTypePattern paramName paramType defaultVal returnType =
       -- All functions returning String share the same node: (arbString::String)
       returnTypeId = case returnType of
         "String" -> "arbString"
-        "Text" -> "arbText"
-        "Int" -> "arbInt"
         "Integer" -> "arbInteger"
-        "Double" -> "arbDouble"
-        "Bool" -> "arbBool"
+        "Number" -> "arbNumber"
+        "Boolean" -> "arbBoolean"
+        "Object" -> "arbObject"
+        "Array" -> "arbArray"
         _ -> "arb" <> T.unpack returnType  -- Fallback convention
       targetNode = createTypeNode (Just (T.pack returnTypeId)) returnType Nothing
       -- Create relationship pattern with FunctionType label

@@ -38,7 +38,7 @@ testParseAgentFromGram = testCase "Parse complete agent with tools from gram" $ 
         , "  [sayHello:Tool {"
         , "    description: \"Returns a friendly greeting message for the given name\""
         , "  } |"
-        , "    (personName::Text {default:\"world\"})==>(::String)"
+        , "    (personName::String {default:\"world\"})==>(::String)"
         , "  ]"
         , "]"
         ]
@@ -61,10 +61,10 @@ testParseAgentFromGram = testCase "Parse complete agent with tools from gram" $ 
 testAssembleAgentInCode :: TestTree
 testAssembleAgentInCode = testCase "Assemble agent entirely in code (no parsing)" $ do
   -- Create type signature pattern element programmatically (no parsing)
-  -- This creates: (personName::Text {default:"world"})==>(arbString::String)
+  -- This creates: (personName::String {default:"world"})==>(arbString::String)
   let typeSigPattern = createFunctionTypePattern 
         (Just "personName") 
-        "Text" 
+        "String" 
         (Just (VString "world")) 
         "String"
   
@@ -104,7 +104,7 @@ testMixParsedAndProgrammatic = testCase "Mix parsed and programmatic elements" $
         [ "[sayHello:Tool {"
         , "  description: \"Returns a friendly greeting message for the given name\""
         , "} |"
-        , "  (personName::Text {default:\"world\"})==>(::String)"
+        , "  (personName::String {default:\"world\"})==>(::String)"
         , "]"
         ]
   
@@ -113,7 +113,7 @@ testMixParsedAndProgrammatic = testCase "Mix parsed and programmatic elements" $
         Left err -> error $ "Should parse tool: " ++ T.unpack err
   
   -- Create another tool programmatically (no parsing)
-  let typeSigPattern = createFunctionTypePattern (Just "city") "Text" Nothing "String"
+  let typeSigPattern = createFunctionTypePattern (Just "city") "String" Nothing "String"
   
   let programmaticTool = case createTool "getWeather" "Gets weather for a city" typeSigPattern of
         Right t -> t

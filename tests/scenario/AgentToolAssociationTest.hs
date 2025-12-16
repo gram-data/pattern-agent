@@ -28,7 +28,7 @@ parseTypeSig sig = case Gram.fromGram sig of
 testAddToolToAgent :: TestTree
 testAddToolToAgent = testCase "Add tool to agent and verify access" $ do
   -- Create a tool
-  let typeSig = parseTypeSig "(name::Text)==>(::String)"
+  let typeSig = parseTypeSig "(name::String)==>(::String)"
   let toolResult = createTool "sayHello" "Greeting tool" typeSig
   case toolResult of
     Right tool -> do
@@ -49,8 +49,8 @@ testAddToolToAgent = testCase "Add tool to agent and verify access" $ do
 testAddMultipleToolsToAgent :: TestTree
 testAddMultipleToolsToAgent = testCase "Add multiple tools to agent" $ do
   -- Create multiple tools
-  let typeSig1 = parseTypeSig "(name::Text)==>(::String)"
-  let typeSig2 = parseTypeSig "(city::Text)==>(::String)"
+  let typeSig1 = parseTypeSig "(name::String)==>(::String)"
+  let typeSig2 = parseTypeSig "(city::String)==>(::String)"
   let tool1Result = createTool "sayHello" "Greeting tool" typeSig1
   let tool2Result = createTool "getWeather" "Weather tool" typeSig2
   
@@ -95,7 +95,7 @@ testConversationalAgentNoTools = testCase "Create purely conversational agent wi
 testAgentWithOneTool :: TestTree
 testAgentWithOneTool = testCase "Create agent with one tool (hello world)" $ do
   -- Create sayHello tool
-  let typeSig = parseTypeSig "(personName::Text {default:\"world\"})==>(::String)"
+  let typeSig = parseTypeSig "(personName::String {default:\"world\"})==>(::String)"
   let toolResult = createTool 
         "sayHello" 
         "Returns a friendly greeting message for the given name"
@@ -126,7 +126,7 @@ testAgentWithOneTool = testCase "Create agent with one tool (hello world)" $ do
 -- This is a placeholder for future execution tests - for now just verifies tools are accessible.
 testAgentSeesToolsDuringProcessing :: TestTree
 testAgentSeesToolsDuringProcessing = testCase "Agent can access tools during processing" $ do
-  let typeSig = parseTypeSig "(x::Text)==>(::String)"
+  let typeSig = parseTypeSig "(x::String)==>(::String)"
   let toolResult = createTool "testTool" "Test tool" typeSig
   case toolResult of
     Right tool -> do

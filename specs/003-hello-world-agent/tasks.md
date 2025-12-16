@@ -43,7 +43,7 @@
 - [X] T002 [P] Verify test directory structure exists: tests/unit/ and tests/scenario/
 - [X] T003 [P] Create Language module structure: src/PatternAgent/Language/ (Core, Schema, TypeSignature, Serialization)
 - [X] T004 [P] Create Runtime module structure: src/PatternAgent/Runtime/ (Execution, ToolLibrary, LLM, Context)
-- [X] T004b [P] Create new module: src/PatternAgent/HelloWorld.hs for hello world example
+- [X] T004b [P] Create new module: tests/scenario/HelloWorldExample.hs for hello world example
 
 ---
 
@@ -209,26 +209,26 @@
 
 **Independent Test**: Can be fully tested by creating the hello world agent, executing it with greeting messages, and verifying it uses the `sayHello` tool appropriately. This delivers a complete, working example that demonstrates tool execution.
 
-### Tests for User Story 4 (Principle 3: Dual Testing Strategy) ⚠️
+### Tests for User Story 4 (Principle 3: Dual Testing Strategy) ✅
 
 **Scenario Tests**:
-- [ ] T087 [P] [US4] Scenario test: Hello world agent uses sayHello tool when responding to greetings in tests/scenario/HelloWorldTest.hs
-- [ ] T088 [P] [US4] Scenario test: sayHello tool is invoked with appropriate parameters when agent processes greeting in tests/scenario/HelloWorldTest.hs
-- [ ] T089 [P] [US4] Scenario test: Agent incorporates sayHello tool result into friendly response in tests/scenario/HelloWorldTest.hs
-- [ ] T090 [P] [US4] Scenario test: Hello world agent responds conversationally without tool for non-greeting messages in tests/scenario/HelloWorldTest.hs
+- [X] T087 [P] [US4] Scenario test: Hello world agent uses sayHello tool when responding to greetings in tests/scenario/HelloWorldTest.hs
+- [X] T088 [P] [US4] Scenario test: sayHello tool is invoked with appropriate parameters when agent processes greeting in tests/scenario/HelloWorldTest.hs
+- [X] T089 [P] [US4] Scenario test: Agent incorporates sayHello tool result into friendly response in tests/scenario/HelloWorldTest.hs
+- [X] T090 [P] [US4] Scenario test: Hello world agent responds conversationally without tool for non-greeting messages in tests/scenario/HelloWorldTest.hs
 
 **Unit Tests**:
-- [ ] T091 [P] [US4] Unit test: Hello world agent creation with sayHello tool and instructions in tests/unit/HelloWorldTest.hs
-- [ ] T092 [P] [US4] Unit test: sayHello tool implementation with various inputs in tests/unit/HelloWorldTest.hs
-- [ ] T093 [P] [US4] Unit test: sayHello tool specification with gram type signature in tests/unit/HelloWorldTest.hs
+- [X] T091 [P] [US4] Unit test: Hello world agent creation with sayHello tool and instructions in tests/unit/HelloWorldTest.hs
+- [X] T092 [P] [US4] Unit test: sayHello tool implementation with various inputs in tests/unit/HelloWorldTest.hs
+- [X] T093 [P] [US4] Unit test: sayHello tool specification with gram type signature in tests/unit/HelloWorldTest.hs
 
-### Implementation for User Story 4 (Principle 4: Expressiveness and Correctness)
+### Implementation for User Story 4 (Principle 4: Expressiveness and Correctness) ✅
 
-- [ ] T094 [US4] Create sayHello Tool (Pattern) in src/PatternAgent/HelloWorld.hs with name "sayHello", description, type signature "(personName::Text {default:\"world\"})==>(::String)"
-- [ ] T095 [US4] Create sayHelloImpl ToolImpl implementation in src/PatternAgent/HelloWorld.hs with invoke function that extracts name and returns greeting
-- [ ] T096 [US4] Create helloWorldToolLibrary ToolLibrary in src/PatternAgent/HelloWorld.hs with sayHello ToolImpl registered
-- [ ] T097 [US4] Create helloWorldAgent Agent (Pattern) in src/PatternAgent/HelloWorld.hs with name "hello_world_agent", description, model, instruction to use sayHello tool, and agentTools = [sayHello]
-- [ ] T098 [US4] Export sayHello, sayHelloImpl, helloWorldToolLibrary, helloWorldAgent from PatternAgent.HelloWorld module
+- [X] T094 [US4] Create sayHello Tool (Pattern) in tests/scenario/HelloWorldExample.hs with name "sayHello", description, type signature "(personName::Text {default:\"world\"})==>(::String)"
+- [X] T095 [US4] Create sayHelloImpl ToolImpl implementation in tests/scenario/HelloWorldExample.hs with invoke function that extracts name and returns greeting
+- [X] T096 [US4] Create helloWorldToolLibrary ToolLibrary in tests/scenario/HelloWorldExample.hs with sayHello ToolImpl registered
+- [X] T097 [US4] Create helloWorldAgent Agent (Pattern) in tests/scenario/HelloWorldExample.hs with name "hello_world_agent", description, model, instruction to use sayHello tool, and agentTools = [sayHello]
+- [X] T098 [US4] Export sayHello, sayHelloImpl, helloWorldToolLibrary, helloWorldAgent from HelloWorldExample module
 
 **Checkpoint**: At this point, User Stories 1, 2, 3, AND 4 should work independently. Developers can create the hello world agent and execute it with tool support.
 
@@ -312,13 +312,13 @@
 **Purpose**: Improvements that affect multiple user stories
 
 - [ ] T141 [P] Add comprehensive error handling for all edge cases in src/PatternAgent/Runtime/Execution.hs (tool timeout scenarios, multiple simultaneous tool calls, agent with no tools but LLM requests tool call)
-- [ ] T142 [P] Update module exports in Language modules (Core, Schema, TypeSignature, Serialization), Runtime modules (Execution, ToolLibrary, LLM, Context), and HelloWorld.hs
-- [ ] T143 [P] Add Haddock documentation to all public functions in Language modules, Runtime modules, and HelloWorld.hs
+- [ ] T142 [P] Update module exports in Language modules (Core, Schema, TypeSignature, Serialization), Runtime modules (Execution, ToolLibrary, LLM, Context) (HelloWorldExample is in tests, exports already complete)
+- [ ] T143 [P] Add Haddock documentation to all public functions in Language modules, Runtime modules (HelloWorldExample already has documentation)
 - [ ] T144 [P] Run quickstart.md examples validation
 - [ ] T145 [P] Additional unit tests for edge cases in tests/unit/ (tool with no parameters, tool with optional parameters, tool with nested record parameters)
 - [ ] T146 [P] Additional scenario tests for complex workflows in tests/scenario/ (multiple tools, tool chaining, error recovery)
 - [ ] T147 [P] Code cleanup and refactoring across all modules
-- [ ] T148 [P] Update pattern-agent.cabal exposed-modules list to include all Language modules, Runtime modules, and PatternAgent.HelloWorld
+- [X] T148 [P] Update pattern-agent.cabal exposed-modules list to include all Language modules, Runtime modules (HelloWorldExample is in tests, not exposed)
 - [ ] T149 [P] Verify tool-free agents still work correctly (agents with empty tools list)
 
 ---

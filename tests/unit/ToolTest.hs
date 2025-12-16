@@ -32,7 +32,7 @@ parseTypeSig sig = case Gram.fromGram sig of
 testToolCreationWithTypeSignature :: TestTree
 testToolCreationWithTypeSignature = testGroup "Tool Creation"
   [ testCase "Create tool with simple type signature" $ do
-      let typeSig = parseTypeSig "(personName::Text)==>(::String)"
+      let typeSig = parseTypeSig "(personName::String)==>(::String)"
       let result = createTool "sayHello" "Greeting tool" typeSig
       case result of
         Right tool -> do
@@ -41,21 +41,21 @@ testToolCreationWithTypeSignature = testGroup "Tool Creation"
         Left err -> assertFailure $ "Expected Right Tool, got Left: " ++ T.unpack err
   
   , testCase "Create tool with optional parameter" $ do
-      let typeSig = parseTypeSig "(personName::Text {default:\"world\"})==>(::String)"
+      let typeSig = parseTypeSig "(personName::String {default:\"world\"})==>(::String)"
       let result = createTool "greet" "Greet with optional name" typeSig
       case result of
         Right tool -> view toolName tool @?= "greet"
         Left err -> assertFailure $ "Expected Right Tool, got Left: " ++ T.unpack err
   
   , testCase "Tool name cannot be empty" $ do
-      let typeSig = parseTypeSig "(name::Text)==>(::String)"
+      let typeSig = parseTypeSig "(name::String)==>(::String)"
       let result = createTool "" "Description" typeSig
       case result of
         Left err -> T.isInfixOf "empty" err @?= True
         Right _ -> assertFailure "Expected Left error for empty name"
   
   , testCase "Tool description cannot be empty" $ do
-      let typeSig = parseTypeSig "(name::Text)==>(::String)"
+      let typeSig = parseTypeSig "(name::String)==>(::String)"
       let result = createTool "toolName" "" typeSig
       case result of
         Left err -> T.isInfixOf "empty" err @?= True
@@ -106,21 +106,21 @@ testToolImplCreation = testGroup "ToolImpl Creation"
 testToolAccessors :: TestTree
 testToolAccessors = testGroup "Tool Accessors"
   [ testCase "toolName lens" $ do
-      let typeSig = parseTypeSig "(x::Text)==>(::String)"
+      let typeSig = parseTypeSig "(x::String)==>(::String)"
       let result = createTool "myTool" "Description" typeSig
       case result of
         Right tool -> view toolName tool @?= "myTool"
         Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
   
   , testCase "toolDescription lens" $ do
-      let typeSig = parseTypeSig "(x::Text)==>(::String)"
+      let typeSig = parseTypeSig "(x::String)==>(::String)"
       let result = createTool "myTool" "My description" typeSig
       case result of
         Right tool -> view toolDescription tool @?= "My description"
         Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
   
   , testCase "toolTypeSignature lens" $ do
-      let typeSig = parseTypeSig "(name::Text)==>(::String)"
+      let typeSig = parseTypeSig "(name::String)==>(::String)"
       let result = createTool "myTool" "Description" typeSig
       case result of
         Right tool -> do
@@ -129,7 +129,7 @@ testToolAccessors = testGroup "Tool Accessors"
         Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
   
   , testCase "toolSchema lens" $ do
-      let typeSig = parseTypeSig "(name::Text)==>(::String)"
+      let typeSig = parseTypeSig "(name::String)==>(::String)"
       let result = createTool "myTool" "Description" typeSig
       case result of
         Right tool -> do
@@ -217,7 +217,7 @@ testTypeSignatureToJSONSchema :: TestTree
 testTypeSignatureToJSONSchema = testGroup "Type Signature to JSON Schema"
   [ testCase "Convert simple type signature" $ do
       let typeSig = TypeSignature
-            [ Parameter (Just "name") "Text" Nothing ]
+            [ Parameter (Just "name") "String" Nothing ]
             (Parameter Nothing "String" Nothing)
       let schema = typeSignatureToJSONSchema typeSig
       case schema of
@@ -226,7 +226,7 @@ testTypeSignatureToJSONSchema = testGroup "Type Signature to JSON Schema"
   
   , testCase "Convert type signature with optional parameter" $ do
       let typeSig = TypeSignature
-            [ Parameter (Just "name") "Text" (Just (String "world")) ]
+            [ Parameter (Just "name") "String" (Just (String "world")) ]
             (Parameter Nothing "String" Nothing)
       let schema = typeSignatureToJSONSchema typeSig
       case schema of
@@ -255,10 +255,10 @@ testAnonymousNodeIdentifiers = testGroup "Anonymous Node Identifiers"
 testProgrammaticTypeSignature :: TestTree
 testProgrammaticTypeSignature = testGroup "Programmatic Type Signature Construction"
   [ testCase "Create function type pattern programmatically" $ do
-      -- Create (personName::Text {default:"world"})==>(::String) programmatically
+      -- Create (personName::String {default:"world"})==>(::String) programmatically
       let typeSigPattern = createFunctionTypePattern 
             (Just "personName") 
-            "Text" 
+            "String" 
             (Just (VString "world")) 
             "String"
       -- Verify it's a relationship pattern with 2 elements
