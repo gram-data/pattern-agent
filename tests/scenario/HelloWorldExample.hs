@@ -26,15 +26,15 @@ module HelloWorldExample
   , helloWorldAgent
   ) where
 
-import PatternAgent.Language.Core (Agent, Tool, createAgent, createTool, createModel, OpenAI, toolSchema)
+import PatternAgent.Language.Core (Agent, Tool, createAgent, createTool, createModel, Provider(..), toolSchema)
 import PatternAgent.Language.TypeSignature (createFunctionTypePattern, TypeSignature(..), Parameter(..), typeSignatureToJSONSchema)
 import PatternAgent.Runtime.ToolLibrary (ToolImpl, ToolLibrary, createToolImpl, emptyToolLibrary, registerTool)
-import Data.Aeson (Value(..), object, (.=))
-import Data.Aeson.Lens (key, _String)
-import Control.Lens (view, (^?))
+import Data.Aeson (Value(..), object, (.=), toJSON, (.:?))
+import Data.Aeson.Types (parseMaybe, withObject)
+import Control.Lens (view)
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
-import Subject.Value (VString(..))
+import qualified Subject.Value as SubjectValue
 
 -- | sayHello Tool (Pattern) - tool specification.
 --
@@ -48,7 +48,7 @@ sayHello = case createTool
   (createFunctionTypePattern
     (Just "personName")
     "String"
-    (Just (VString "world"))
+    (Just (SubjectValue.VString "world"))
     "String")
   of
   Right tool -> tool
@@ -65,8 +65,10 @@ sayHelloImpl = case createToolImpl
   (getSayHelloSchema)
   (\args -> do
     -- Extract personName from args, default to "world" if not provided
-    let name = fromMaybe "world" $ args ^? key "personName" . _String
-    return $ String $ "Hello, " <> name <> "! Nice to meet you."
+    let name = case parseMaybe (withObject "args" $ \obj -> obj .:? "personName") args of
+          Just (Just (String n)) -> T.unpack n
+          _ -> "world"
+    return $ String $ "Hello, " <> T.pack name <> "! Nice to meet you."
   )
   of
   Right impl -> impl
@@ -76,7 +78,7 @@ sayHelloImpl = case createToolImpl
     -- Type signature: (personName::String {default:"world"})==>(::String)
     -- Uses capitalized JSON Schema type names (String) following Gram label convention
     getSayHelloSchema = typeSignatureToJSONSchema $ TypeSignature
-      { typeParams = [Parameter (Just "personName") "String" (Just (String "world"))]
+      { typeParams = [Parameter (Just "personName") "String" (Just (toJSON ("world" :: T.Text)))]
       , typeReturn = Parameter Nothing "String" Nothing
       }
 

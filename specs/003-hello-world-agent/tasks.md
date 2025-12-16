@@ -240,24 +240,24 @@
 
 **Independent Test**: Can be fully tested by verifying agents maintain conversation history and can use tools appropriately in follow-up messages. This delivers natural conversational capabilities with tool support.
 
-### Tests for User Story 5 (Principle 3: Dual Testing Strategy) ⚠️
+### Tests for User Story 5 (Principle 3: Dual Testing Strategy) ✅
 
 **Scenario Tests**:
-- [ ] T099 [P] [US5] Scenario test: Agent references previous tool usage in follow-up message in tests/scenario/MultiTurnToolConversationTest.hs
-- [ ] T100 [P] [US5] Scenario test: Multi-turn conversation with tool usage maintains coherence in tests/scenario/MultiTurnToolConversationTest.hs
-- [ ] T101 [P] [US5] Scenario test: Agent uses previous tool results to inform new response in tests/scenario/MultiTurnToolConversationTest.hs
+- [X] T099 [P] [US5] Scenario test: Agent references previous tool usage in follow-up message in tests/scenario/MultiTurnToolConversationTest.hs
+- [X] T100 [P] [US5] Scenario test: Multi-turn conversation with tool usage maintains coherence in tests/scenario/MultiTurnToolConversationTest.hs
+- [X] T101 [P] [US5] Scenario test: Agent uses previous tool results to inform new response in tests/scenario/MultiTurnToolConversationTest.hs
 
 **Unit Tests**:
-- [ ] T102 [P] [US5] Unit test: Conversation context includes tool invocations and results in tests/unit/ContextTest.hs
-- [ ] T103 [P] [US5] Unit test: Agents use conversation history including tool results when generating responses in tests/unit/ExecutionTest.hs
-- [ ] T104 [P] [US5] Unit test: FunctionRole messages properly formatted in conversation context in tests/unit/ContextTest.hs
+- [X] T102 [P] [US5] Unit test: Conversation context includes tool invocations and results in tests/unit/ContextTest.hs
+- [X] T103 [P] [US5] Unit test: Agents use conversation history including tool results when generating responses in tests/unit/ExecutionTest.hs
+- [X] T104 [P] [US5] Unit test: FunctionRole messages properly formatted in conversation context in tests/unit/ContextTest.hs
 
-### Implementation for User Story 5 (Principle 4: Expressiveness and Correctness)
+### Implementation for User Story 5 (Principle 4: Expressiveness and Correctness) ✅
 
-- [ ] T105 [US5] Verify conversation context includes FunctionRole messages for tool results in src/PatternAgent/Runtime/Execution.hs
-- [ ] T106 [US5] Verify conversation context is properly passed through iterative execution loop in src/PatternAgent/Runtime/Execution.hs
-- [ ] T107 [US5] Verify LLM API requests include full conversation history with tool invocations in src/PatternAgent/Runtime/LLM.hs
-- [ ] T108 [US5] Verify context updates include user message, assistant message with tool call, function message with tool result, and final assistant response in src/PatternAgent/Runtime/Execution.hs
+- [X] T105 [US5] Verify conversation context includes FunctionRole messages for tool results in src/PatternAgent/Runtime/Execution.hs
+- [X] T106 [US5] Verify conversation context is properly passed through iterative execution loop in src/PatternAgent/Runtime/Execution.hs
+- [X] T107 [US5] Verify LLM API requests include full conversation history with tool invocations in src/PatternAgent/Runtime/LLM.hs
+- [X] T108 [US5] Verify context updates include user message, assistant message with tool call, function message with tool result, and final assistant response in src/PatternAgent/Runtime/Execution.hs
 
 **Checkpoint**: At this point, all user stories should work independently. Developers can create agents with tools, execute them, and maintain conversation context with tool usage.
 

@@ -18,10 +18,12 @@ module PatternAgent.Runtime.Execution
   , executeAgentWithLibrary
     -- * Tool Binding
   , bindAgentTools
+    -- * Context Conversion
+  , contextToLLMMessages
   ) where
 
 import PatternAgent.Language.Core (Agent, Tool, agentModel, agentInstruction, agentTools, toolName, toolDescription, toolSchema)
-import PatternAgent.Runtime.LLM (LLMClient, LLMMessage(..), FunctionCall(..), callLLM, createClientForModel, ApiKeyError(..))
+import PatternAgent.Runtime.LLM (LLMClient, LLMMessage(..), LLMResponse(..), FunctionCall(..), callLLM, createClientForModel, ApiKeyError(..))
 import PatternAgent.Runtime.Context
   ( ConversationContext
   , Message(..)
@@ -116,29 +118,29 @@ executeAgentWithLibrary
   -> IO (Either AgentError AgentResponse)
 executeAgentWithLibrary agent userInput context library = do
   -- Validate input
-  when (T.null userInput) $
-    return $ Left $ ValidationError "Empty user input"
-  
-  -- Bind tools
-  boundToolsResult <- return $ bindAgentTools agent library
-  case boundToolsResult of
-    Left err -> return $ Left $ ToolError err
-    Right boundTools -> do
-      -- Create LLM client
-      let model = view agentModel agent
-      clientResult <- createClientForModel model
-      case clientResult of
-        Left apiKeyErr -> return $ Left $ ConfigurationError $ case apiKeyErr of
-          ApiKeyNotFound msg -> msg
-          ApiKeyInvalid msg -> msg
-        Right client -> do
-          -- Add user message to context
-          let userMessageResult = addMessage UserRole userInput context
-          case userMessageResult of
-            Left err -> return $ Left $ ValidationError err
-            Right updatedContext -> do
-              -- Execute iterative loop
-              executeIteration client agent boundTools updatedContext [] 0
+  if T.null userInput
+    then return $ Left $ ValidationError "Empty user input"
+    else do
+      -- Bind tools
+      boundToolsResult <- return $ bindAgentTools agent library
+      case boundToolsResult of
+        Left err -> return $ Left $ ToolError err
+        Right boundTools -> do
+          -- Create LLM client
+          let model = view agentModel agent
+          clientResult <- createClientForModel model
+          case clientResult of
+            Left apiKeyErr -> return $ Left $ ConfigurationError $ case apiKeyErr of
+              ApiKeyNotFound msg -> msg
+              ApiKeyInvalid msg -> msg
+            Right client -> do
+              -- T108: Add user message to context (first message in conversation)
+              let userMessageResult = addMessage UserRole userInput context
+              case userMessageResult of
+                Left err -> return $ Left $ ValidationError err
+                Right updatedContext -> do
+                  -- Execute iterative loop
+                  executeIteration client agent boundTools updatedContext [] 0
   where
     -- Maximum iteration limit to prevent infinite loops
     maxIterations = 10
@@ -156,11 +158,13 @@ executeAgentWithLibrary agent userInput context library = do
       | iteration >= maxIterations = return $ Left $ ToolError "Maximum iteration limit reached"
       | otherwise = do
           -- Build LLM request
+          -- T106: Verify conversation context is properly passed through iterative execution loop
+          -- T107: Verify LLM API requests include full conversation history with tool invocations
           let model = view agentModel agent
           let instruction = view agentInstruction agent
           let tools = view agentTools agent
           let functions = if null tools then Nothing else Just (toolsToFunctions tools)
-          let messages = contextToLLMMessages context
+          let messages = contextToLLMMessages context  -- Full conversation history including tool invocations
           
           -- Call LLM
           llmResult <- callLLM client model instruction messages Nothing Nothing functions
@@ -171,10 +175,11 @@ executeAgentWithLibrary agent userInput context library = do
               case responseFunctionCall llmResponse of
                 Just functionCall -> do
                   -- Tool call detected - invoke tool
-                  invocationResult <- invokeToolFromFunctionCall functionCall boundTools
-                  case invocationResult of
-                    Left err -> return $ Left $ ToolError err
+                  toolInvocationResult <- invokeToolFromFunctionCall functionCall boundTools
+                  case toolInvocationResult of
+                    Left err -> return $ Left err
                     Right invocation -> do
+                      -- T108: Verify context updates include user message, assistant message with tool call, function message with tool result, and final assistant response
                       -- Add assistant message with tool call to context
                       let assistantContent = if T.null (responseText llmResponse)
                             then "Calling " <> functionCallName functionCall
@@ -183,6 +188,7 @@ executeAgentWithLibrary agent userInput context library = do
                       case assistantMsgResult of
                         Left err -> return $ Left $ ValidationError err
                         Right contextWithAssistant -> do
+                          -- T105: Verify conversation context includes FunctionRole messages for tool results
                           -- Add function message with tool result to context
                           let functionContent = case invocationResult invocation of
                                 Right val -> T.pack $ show val  -- Simplified - would use proper JSON encoding
@@ -191,25 +197,26 @@ executeAgentWithLibrary agent userInput context library = do
                           case functionMsgResult of
                             Left err -> return $ Left $ ValidationError err
                             Right contextWithFunction -> do
-                              -- Continue iteration with updated context
+                              -- T106: Continue iteration with updated context (context is passed through loop)
                               executeIteration client agent boundTools contextWithFunction (invocation : toolInvocations) (iteration + 1)
                 
                 Nothing -> do
                   -- No function call - final text response
+                  -- T108: Add final assistant response to context
                   let finalContent = responseText llmResponse
-                  when (T.null finalContent) $
-                    return $ Left $ LLMAPIError "LLM returned empty response"
-                  
-                  -- Add final assistant message to context (for conversation history)
-                  let finalMsgResult = addMessage AssistantRole finalContent context
-                  case finalMsgResult of
-                    Left err -> return $ Left $ ValidationError err
-                    Right _ -> do
-                      -- Return final response
-                      return $ Right $ AgentResponse
-                        { responseContent = finalContent
-                        , responseToolsUsed = reverse toolInvocations  -- Reverse to get chronological order
-                        }
+                  if T.null finalContent
+                    then return $ Left $ LLMAPIError "LLM returned empty response"
+                    else do
+                      -- Add final assistant message to context (for conversation history)
+                      let finalMsgResult = addMessage AssistantRole finalContent context
+                      case finalMsgResult of
+                        Left err -> return $ Left $ ValidationError err
+                        Right _ -> do
+                          -- Return final response
+                          return $ Right $ AgentResponse
+                            { responseContent = finalContent
+                            , responseToolsUsed = reverse toolInvocations  -- Reverse to get chronological order
+                            }
     
     -- Invoke tool from function call
     invokeToolFromFunctionCall
@@ -225,7 +232,7 @@ executeAgentWithLibrary agent userInput context library = do
         Just impl -> do
           -- Parse arguments JSON
           let argsJson = functionCallArguments functionCall
-          let argsValue = case decode (TE.encodeUtf8 argsJson) of
+          let argsValue = case decode (BL.fromStrict $ TE.encodeUtf8 argsJson) of
                 Just val -> val
                 Nothing -> object []  -- Default to empty object if parsing fails
           

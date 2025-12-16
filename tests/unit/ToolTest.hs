@@ -5,7 +5,8 @@ module ToolTest where
 import Test.Tasty
 import Test.Tasty.HUnit
 import PatternAgent.Language.Core (Tool, createTool, toolName, toolDescription, toolTypeSignature, toolSchema)
-import PatternAgent.Runtime.ToolLibrary (ToolImpl(..), createToolImpl, toolImplName, toolImplDescription, toolImplSchema, toolImplInvoke, emptyToolLibrary, registerTool, lookupTool, validateToolArgs)
+import PatternAgent.Runtime.ToolLibrary (ToolImpl(..), createToolImpl, toolImplName, toolImplDescription, toolImplSchema, toolImplInvoke, emptyToolLibrary, registerTool, lookupTool, validateToolArgs, bindTool)
+import HelloWorldExample (sayHello, sayHelloImpl, helloWorldToolLibrary)
 import PatternAgent.Language.TypeSignature (extractTypeSignatureFromPattern, typeSignatureToJSONSchema, TypeSignature(..), Parameter(..), createTypeNode, createFunctionTypePattern)
 import PatternAgent.Language.Core
 import Subject.Core (Subject(..), Symbol(..))
@@ -278,9 +279,81 @@ testProgrammaticTypeSignature = testGroup "Programmatic Type Signature Construct
         _ -> assertFailure "Target node should have arbString identifier"
   ]
 
+-- | Unit test: bindTool function with sayHello tool (real example).
+--
+-- This test specifically tests binding the sayHello Tool to sayHelloImpl
+-- to debug the integration test failure.
+testBindToolSayHello :: TestTree
+testBindToolSayHello = testGroup "bindTool with sayHello"
+  [ testCase "bindTool binds sayHello Tool to sayHelloImpl" $ do
+      -- Verify sayHello tool exists
+      view toolName sayHello @?= "sayHello"
+      
+      -- Verify sayHelloImpl exists
+      toolImplName sayHelloImpl @?= "sayHello"
+      
+      -- Test binding sayHello Tool to sayHelloImpl in library
+      case bindTool sayHello helloWorldToolLibrary of
+        Just boundImpl -> do
+          -- Verify binding succeeded
+          toolImplName boundImpl @?= "sayHello"
+          toolImplDescription boundImpl @?= "Returns a friendly greeting message for the given name"
+          
+          -- Verify schemas match (this is likely where it's failing)
+          let toolSchemaValue = view toolSchema sayHello
+          let implSchemaValue = toolImplSchema boundImpl
+          -- Print schemas for debugging if they don't match
+          if toolSchemaValue == implSchemaValue
+            then return ()
+            else do
+              putStrLn $ "Tool schema: " ++ show toolSchemaValue
+              putStrLn $ "Impl schema: " ++ show implSchemaValue
+              assertFailure "Schemas do not match"
+        Nothing -> do
+          -- Binding failed - print diagnostic information
+          putStrLn $ "Tool name: " ++ T.unpack (view toolName sayHello)
+          putStrLn $ "Tool description: " ++ T.unpack (view toolDescription sayHello)
+          putStrLn $ "Tool schema: " ++ show (view toolSchema sayHello)
+          putStrLn $ "Impl name: " ++ T.unpack (toolImplName sayHelloImpl)
+          putStrLn $ "Impl description: " ++ T.unpack (toolImplDescription sayHelloImpl)
+          putStrLn $ "Impl schema: " ++ show (toolImplSchema sayHelloImpl)
+          
+          -- Check if tool is in library
+          case lookupTool "sayHello" helloWorldToolLibrary of
+            Just impl -> do
+              putStrLn "Tool is in library"
+              putStrLn $ "Library impl name: " ++ T.unpack (toolImplName impl)
+              putStrLn $ "Library impl description: " ++ T.unpack (toolImplDescription impl)
+              putStrLn $ "Library impl schema: " ++ show (toolImplSchema impl)
+            Nothing -> putStrLn "Tool NOT found in library"
+          
+          -- DIAGNOSIS: The binding failed because toolSchema returns empty schema
+          -- Root cause: extractTypeSignatureFromPattern is not yet implemented
+          -- It returns Left "Type signature extraction from Pattern not yet fully implemented"
+          -- This causes toolSchema to return empty schema, which doesn't match implSchema
+          assertFailure "bindTool returned Nothing - binding failed (extractTypeSignatureFromPattern not implemented)"
+  
+  , testCase "bindTool schema comparison details" $ do
+      -- Extract schemas for detailed comparison
+      let toolSchemaValue = view toolSchema sayHello
+      let implSchemaValue = toolImplSchema sayHelloImpl
+      
+      -- Print both schemas for manual inspection
+      putStrLn "\n=== Tool Schema (from Pattern) ==="
+      putStrLn $ show toolSchemaValue
+      putStrLn "\n=== Impl Schema (from typeSignatureToJSONSchema) ==="
+      putStrLn $ show implSchemaValue
+      putStrLn "\n=== Schema Comparison ==="
+      putStrLn $ "Schemas equal: " ++ show (toolSchemaValue == implSchemaValue)
+      
+      -- This test always passes - it's just for debugging
+      return ()
+  ]
+
 tests :: TestTree
 tests = testGroup "Tool Tests"
-  [ testToolCreationWithTypeSignature
+  [ testBindToolSayHello
+  , testToolCreationWithTypeSignature
   , testToolImplCreation
   , testToolAccessors
   , testToolImplAccessors

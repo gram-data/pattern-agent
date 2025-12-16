@@ -4,10 +4,11 @@ module ExecutionTest where
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import PatternAgent.Language.Core (Agent, Tool, createAgent, createTool, agentTools, toolName, createModel, OpenAI)
-import PatternAgent.Runtime.ToolLibrary (ToolImpl, ToolLibrary, createToolImpl, emptyToolLibrary, registerTool, lookupTool, bindTool, validateToolArgs)
-import PatternAgent.Runtime.Execution (bindAgentTools, AgentError(..))
-import PatternAgent.Runtime.Context (ConversationContext, emptyContext)
+import PatternAgent.Language.Core (Agent, Tool, createAgent, createTool, agentTools, toolName, createModel, Provider(..))
+import PatternAgent.Runtime.ToolLibrary (ToolImpl, ToolLibrary, createToolImpl, emptyToolLibrary, registerTool, lookupTool, bindTool, validateToolArgs, toolImplName)
+import PatternAgent.Runtime.Execution (bindAgentTools, AgentError(..), contextToLLMMessages)
+import PatternAgent.Runtime.Context (ConversationContext, emptyContext, Message(..), MessageRole(..), addMessage)
+import PatternAgent.Runtime.LLM (LLMMessage(..))
 import Control.Lens (view)
 import Data.Aeson (Value(..), object, (.=))
 import qualified Data.Vector as V
@@ -105,7 +106,9 @@ testToolBinding = testGroup "Tool Binding"
               let library = registerTool "testTool" toolImpl emptyToolLibrary
               -- TODO: Test bindTool when implemented
               -- For now, verify lookup works
-              lookupTool "testTool" library @?= Just toolImpl
+              case lookupTool "testTool" library of
+                Just found -> toolImplName found @?= "testTool"
+                Nothing -> assertFailure "Should find tool in library"
             Left err -> assertFailure $ "ToolImpl creation failed: " ++ T.unpack err
         Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
   
@@ -118,7 +121,9 @@ testToolBinding = testGroup "Tool Binding"
           let library = emptyToolLibrary
           -- TODO: Test bindTool returns Nothing when tool not found
           -- For now, verify lookup returns Nothing
-          lookupTool "missingTool" library @?= Nothing
+          case lookupTool "missingTool" library of
+            Nothing -> return ()
+            Just _ -> assertFailure "Should return Nothing for missing tool"
         Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
   ]
 
@@ -157,7 +162,9 @@ testToolLibraryRegistration = testGroup "ToolLibrary Registration"
       case createToolImpl "testTool" "Test" schema invoke of
         Right toolImpl -> do
           let library = registerTool "testTool" toolImpl emptyToolLibrary
-          lookupTool "testTool" library @?= Just toolImpl
+          case lookupTool "testTool" library of
+            Just found -> toolImplName found @?= "testTool"
+            Nothing -> assertFailure "Should find tool in library"
         Left err -> assertFailure $ "ToolImpl creation failed: " ++ T.unpack err
   
   , testCase "Lookup tool by name" $ do
@@ -173,7 +180,9 @@ testToolLibraryRegistration = testGroup "ToolLibrary Registration"
   
   , testCase "Lookup non-existent tool returns Nothing" $ do
       let library = emptyToolLibrary
-      lookupTool "nonexistent" library @?= Nothing
+      case lookupTool "nonexistent" library of
+        Nothing -> return ()
+        Just _ -> assertFailure "Should return Nothing for non-existent tool"
   ]
 
 -- | Unit test: bindTool function validates tool matches specification.
@@ -197,6 +206,113 @@ testBindToolValidation = testGroup "bindTool Validation"
         Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
   ]
 
+-- | Unit test: Agents use conversation history including tool results when generating responses.
+testConversationHistoryWithToolResults :: TestTree
+testConversationHistoryWithToolResults = testGroup "Conversation History with Tool Results"
+  [ testCase "Context includes tool invocations in conversation history" $ do
+      let context = emptyContext
+      -- Add user message
+      let context1 = case addMessage UserRole "Hello" context of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      -- Add assistant message with tool call
+      let context2 = case addMessage AssistantRole "Calling sayHello" context1 of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      -- Add function message with tool result
+      let context3 = case addMessage (FunctionRole "sayHello") "Hello, Alice!" context2 of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      -- Add final assistant response
+      let context4 = case addMessage AssistantRole "Hello, Alice! How can I help?" context3 of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      
+      -- Convert to LLM messages
+      let llmMessages = contextToLLMMessages context4
+      
+      -- Verify all messages are included
+      length llmMessages @?= 4
+      
+      -- Verify message roles are correct
+      llmMessageRole (llmMessages !! 0) @?= "user"
+      llmMessageRole (llmMessages !! 1) @?= "assistant"
+      llmMessageRole (llmMessages !! 2) @?= "function"
+      llmMessageRole (llmMessages !! 3) @?= "assistant"
+      
+      -- Verify function message has tool name
+      llmMessageName (llmMessages !! 2) @?= Just "sayHello"
+      llmMessageName (llmMessages !! 0) @?= Nothing
+      llmMessageName (llmMessages !! 1) @?= Nothing
+      llmMessageName (llmMessages !! 3) @?= Nothing
+  
+  , testCase "Conversation history maintains order across multiple tool invocations" $ do
+      let context = emptyContext
+      -- First turn: user -> assistant -> function -> assistant
+      let context1 = case addMessage UserRole "Greet me" context of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      let context2 = case addMessage AssistantRole "Calling sayHello" context1 of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      let context3 = case addMessage (FunctionRole "sayHello") "Hello, world!" context2 of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      let context4 = case addMessage AssistantRole "Hello, world!" context3 of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      -- Second turn: user -> assistant
+      let context5 = case addMessage UserRole "What did you say?" context4 of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      let context6 = case addMessage AssistantRole "I said Hello, world!" context5 of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      
+      -- Convert to LLM messages
+      let llmMessages = contextToLLMMessages context6
+      
+      -- Verify all 6 messages are included
+      length llmMessages @?= 6
+      
+      -- Verify order: user, assistant, function, assistant, user, assistant
+      llmMessageRole (llmMessages !! 0) @?= "user"
+      llmMessageRole (llmMessages !! 1) @?= "assistant"
+      llmMessageRole (llmMessages !! 2) @?= "function"
+      llmMessageRole (llmMessages !! 3) @?= "assistant"
+      llmMessageRole (llmMessages !! 4) @?= "user"
+      llmMessageRole (llmMessages !! 5) @?= "assistant"
+      
+      -- Verify function message is in history
+      llmMessageName (llmMessages !! 2) @?= Just "sayHello"
+      llmMessageContent (llmMessages !! 2) @?= "Hello, world!"
+  
+  , testCase "Context with tool results is passed to LLM API" $ do
+      let context = emptyContext
+      -- Build context with tool invocation
+      let context1 = case addMessage UserRole "Hello" context of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      let context2 = case addMessage AssistantRole "Calling sayHello" context1 of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      let context3 = case addMessage (FunctionRole "sayHello") "Hello, Alice!" context2 of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      
+      -- Convert to LLM messages (simulating what would be sent to API)
+      let llmMessages = contextToLLMMessages context3
+      
+      -- Verify context includes all messages including tool result
+      length llmMessages @?= 3
+      
+      -- Verify function message is included with correct format
+      let functionMsg = llmMessages !! 2
+      llmMessageRole functionMsg @?= "function"
+      llmMessageName functionMsg @?= Just "sayHello"
+      llmMessageContent functionMsg @?= "Hello, Alice!"
+  ]
+
 tests :: TestTree
 tests = testGroup "Execution Tests"
   [ testToolCallDetection
@@ -207,5 +323,6 @@ tests = testGroup "Execution Tests"
   , testToolParameterValidation
   , testToolLibraryRegistration
   , testBindToolValidation
+  , testConversationHistoryWithToolResults
   ]
 

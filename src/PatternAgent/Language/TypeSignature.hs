@@ -31,6 +31,7 @@ import Subject.Core (Subject(..), Symbol(..))
 import qualified Subject.Value as SubjectValue
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import Control.Monad (unless)
 
 -- | Parsed type signature representation.
 data TypeSignature = TypeSignature
@@ -54,12 +55,71 @@ data Parameter = Parameter
 --
 -- Example: Pattern element representing "(personName::String {default:\"world\"})==>(::String)"
 -- Returns parsed representation or error message.
+--
+-- The Pattern structure created by createFunctionTypePattern:
+-- - Relationship pattern with "FunctionType" label
+-- - Two elements: [sourceNode (parameter), targetNode (return type)]
 extractTypeSignatureFromPattern :: Pattern Subject -> Either Text TypeSignature
 extractTypeSignatureFromPattern patternElem = do
-  -- Type signature is a path notation element with nodes connected by arrows
-  -- For now, return a placeholder - full implementation will traverse the path structure
-  -- This is a foundational implementation that will be expanded
-  Left "Type signature extraction from Pattern not yet fully implemented"
+  -- Check if this is a FunctionType pattern
+  let subject = value patternElem
+  unless ("FunctionType" `Set.member` labels subject) $
+    Left "Pattern element must have FunctionType label"
+  
+  -- Extract source and target nodes
+  case elements patternElem of
+    [sourceNode, targetNode] -> do
+      -- Extract parameter from source node
+      param <- extractParameterFromNode sourceNode
+      
+      -- Extract return type from target node
+      returnType <- extractReturnTypeFromNode targetNode
+      
+      return $ TypeSignature [param] returnType
+    _ -> Left "FunctionType pattern must have exactly 2 elements (source and target nodes)"
+  
+  where
+    -- Extract parameter information from a type node
+    extractParameterFromNode :: Pattern Subject -> Either Text Parameter
+    extractParameterFromNode node = do
+      let nodeSubject = value node
+      let nodeLabels = labels nodeSubject
+      
+      -- Extract type label (should be one of: String, Integer, Number, Boolean, Object, Array)
+      typeLabel <- case Set.toList nodeLabels of
+        [label] -> Right $ T.pack label
+        _ -> Left "Type node must have exactly one type label"
+      
+      -- Extract parameter name from identity
+      let paramName = case identity nodeSubject of
+            Symbol "" -> Nothing  -- Anonymous parameter
+            Symbol name -> Just (T.pack name)
+      
+      -- Extract default value from properties
+      -- Note: Subject.Value supports VString, VInteger, VBoolean, VSymbol, VRange
+      -- For JSON schema, we convert to Aeson.Value
+      let defaultVal = case Map.lookup "default" (properties nodeSubject) of
+            Just (SubjectValue.VString s) -> Just (String (T.pack s))
+            Just (SubjectValue.VInteger i) -> Just (Number (fromIntegral i))
+            Just (SubjectValue.VBoolean b) -> Just (Bool b)
+            -- For other types (VSymbol, VRange), we could convert to string if needed
+            _ -> Nothing
+      
+      return $ Parameter paramName typeLabel defaultVal
+    
+    -- Extract return type information from a type node
+    extractReturnTypeFromNode :: Pattern Subject -> Either Text Parameter
+    extractReturnTypeFromNode node = do
+      let nodeSubject = value node
+      let nodeLabels = labels nodeSubject
+      
+      -- Extract type label
+      typeLabel <- case Set.toList nodeLabels of
+        [label] -> Right $ T.pack label
+        _ -> Left "Return type node must have exactly one type label"
+      
+      -- Return type is always anonymous (no parameter name)
+      return $ Parameter Nothing typeLabel Nothing
 
 -- | Convert parsed type signature to JSON schema.
 --
