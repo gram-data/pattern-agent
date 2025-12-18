@@ -12,6 +12,8 @@ import qualified ExecutionTest
 import qualified ContextTest
 import qualified MultiTurnToolConversationTest
 import qualified MultiTurnConversationIntegrationTest
+import qualified ZeroToolExecutionTest
+import qualified OneToolExecutionTest
 
 main :: IO ()
 main = do
@@ -33,6 +35,8 @@ main = do
         , AgentToolAssociationTest.tests
         , AgentCreationScenariosTest.tests
         , MultiTurnToolConversationTest.tests
+        , ZeroToolExecutionTest.tests
+        , OneToolExecutionTest.tests
         ]
     , if runIntegration
         then testGroup "Integration Tests (requires API key)"

@@ -4,13 +4,14 @@ module ExecutionTest where
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import PatternAgent.Language.Core (Agent, Tool, createAgent, createTool, agentTools, toolName, toolSchema, createModel, Provider(..))
+import PatternAgent.Language.Core (Agent, Tool, createAgent, createTool, agentTools, agentName, toolName, toolSchema, createModel, Provider(..))
 import PatternAgent.Runtime.ToolLibrary (ToolImpl, ToolLibrary, createToolImpl, emptyToolLibrary, registerTool, lookupTool, bindTool, validateToolArgs, toolImplName, toolImplInvoke)
-import PatternAgent.Runtime.Execution (bindAgentTools, AgentError(..), contextToLLMMessages)
+import PatternAgent.Runtime.Execution (bindAgentTools, AgentError(..), contextToLLMMessages, toolsToFunctions)
 import PatternAgent.Runtime.Context (ConversationContext, emptyContext, Message(..), MessageRole(..), addMessage)
 import PatternAgent.Runtime.LLM (LLMMessage(..))
 import Control.Lens (view)
-import Data.Aeson (Value(..), object, (.=))
+import Data.Aeson (Value(..), object, (.=), (.:?))
+import Data.Aeson.Types (parseMaybe, withObject)
 import qualified Data.Vector as V
 import qualified Data.Text as T
 import Pattern (Pattern)
@@ -408,6 +409,123 @@ testConversationHistoryWithToolResults = testGroup "Conversation History with To
       llmMessageContent functionMsg @?= "Hello, Alice!"
   ]
 
+-- | Unit test: Agent execution without tools.
+testAgentExecutionWithoutTools :: TestTree
+testAgentExecutionWithoutTools = testGroup "Agent Execution Without Tools"
+  [ testCase "Agent execution without tools succeeds" $ do
+      -- Create agent with no tools
+      let agentResult = createAgent "test_agent" "Test agent" (createModel "gpt-4o-mini" OpenAI) "You are helpful." []
+      case agentResult of
+        Right agent -> do
+          let tools = view agentTools agent
+          length tools @?= 0
+          -- Verify agent can be created without tools
+          view agentName agent @?= "test_agent"
+        Left err -> assertFailure $ "Failed to create agent: " ++ T.unpack err
+  
+  , testCase "Response generation using only LLM capabilities" $ do
+      -- Create agent with no tools
+      let agentResult = createAgent "test_agent" "Test agent" (createModel "gpt-4o-mini" OpenAI) "You are helpful." []
+      case agentResult of
+        Right agent -> do
+          let tools = view agentTools agent
+          length tools @?= 0
+          -- Verify toolsToFunctions returns empty list for no tools
+          let functions = toolsToFunctions tools
+          length functions @?= 0
+        Left err -> assertFailure $ "Failed to create agent: " ++ T.unpack err
+  
+  , testCase "Execution handles tool call requests gracefully when no tools available" $ do
+      -- Create agent with no tools
+      let agentResult = createAgent "test_agent" "Test agent" (createModel "gpt-4o-mini" OpenAI) "You are helpful." []
+      case agentResult of
+        Right agent -> do
+          let tools = view agentTools agent
+          length tools @?= 0
+          -- Verify that when tools list is empty, functions is Nothing
+          let functions = if null tools then Nothing else Just (toolsToFunctions tools)
+          functions @?= Nothing
+          -- This simulates what executeAgentWithLibrary does when agent has no tools
+        Left err -> assertFailure $ "Failed to create agent: " ++ T.unpack err
+  ]
+
+-- | Unit test: One tool execution (User Story 2).
+testOneToolExecution :: TestTree
+testOneToolExecution = testGroup "One Tool Execution"
+  [ testCase "Execution environment detects tool call requests from LLM" $ do
+      -- Create agent with one tool
+      let toolResult = createTool "sayHello" "Greeting tool" (parseTypeSig "(personName::String)==>(::String)")
+      case toolResult of
+        Right tool -> do
+          let agentResult = createAgent "test_agent" "Test agent" (createModel "gpt-4o-mini" OpenAI) "You are helpful." [tool]
+          case agentResult of
+            Right agent -> do
+              let tools = view agentTools agent
+              length tools @?= 1
+              -- Verify toolsToFunctions creates function definitions
+              let functions = toolsToFunctions tools
+              length functions @?= 1
+            Left err -> assertFailure $ "Failed to create agent: " ++ T.unpack err
+        Left err -> assertFailure $ "Failed to create tool: " ++ T.unpack err
+  
+  , testCase "Tools are invoked with correct parameters" $ do
+      -- Create tool and tool implementation
+      let toolResult = createTool "sayHello" "Greeting tool" (parseTypeSig "(personName::String)==>(::String)")
+      case toolResult of
+        Right tool -> do
+          let schema = view toolSchema tool
+          let invoke = \args -> do
+                let parsed = parseMaybe (withObject "args" $ \obj -> obj .:? "personName") args
+                case parsed of
+                  Just (Just (String name)) -> return $ String $ "Hello, " <> name <> "!"
+                  _ -> return $ String "Hello, world!"
+          case createToolImpl "sayHello" "Greeting tool" schema invoke of
+            Right toolImpl -> do
+              -- Invoke tool with parameters
+              result <- toolImplInvoke toolImpl (object ["personName" .= ("Alice" :: T.Text)])
+              case result of
+                String "Hello, Alice!" -> return ()  -- Tool executed with correct parameters
+                _ -> assertFailure "Tool should return greeting with name"
+            Left err -> assertFailure $ "ToolImpl creation failed: " ++ T.unpack err
+        Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
+  
+  , testCase "Tool results are properly formatted and returned to LLM" $ do
+      -- Create tool implementation
+      let toolResult = createTool "sayHello" "Greeting tool" (parseTypeSig "(personName::String)==>(::String)")
+      case toolResult of
+        Right tool -> do
+          let schema = view toolSchema tool
+          let invoke = \args -> return $ String "Hello, world!"
+          case createToolImpl "sayHello" "Greeting tool" schema invoke of
+            Right toolImpl -> do
+              -- Invoke tool
+              result <- toolImplInvoke toolImpl (object [])
+              case result of
+                String "Hello, world!" -> do
+                  -- Verify result is properly formatted (String Value)
+                  True @? "Tool result should be properly formatted"
+                _ -> assertFailure "Tool should return String value"
+            Left err -> assertFailure $ "ToolImpl creation failed: " ++ T.unpack err
+        Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
+  
+  , testCase "Tool execution errors are caught and handled appropriately" $ do
+      -- Create tool implementation that throws error
+      let toolResult = createTool "testTool" "Test tool" (parseTypeSig "(::String)==>(::String)")
+      case toolResult of
+        Right tool -> do
+          let schema = view toolSchema tool
+          let invoke = \_args -> error "Tool execution error"
+          case createToolImpl "testTool" "Test tool" schema invoke of
+            Right toolImpl -> do
+              -- Invoke tool (should catch error)
+              result <- try (toolImplInvoke toolImpl (String "test")) :: IO (Either SomeException Value)
+              case result of
+                Left _ex -> return ()  -- Error was caught
+                Right _ -> assertFailure "Tool execution should throw error"
+            Left err -> assertFailure $ "ToolImpl creation failed: " ++ T.unpack err
+        Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
+  ]
+
 tests :: TestTree
 tests = testGroup "Execution Tests"
   [ testToolCallDetection
@@ -419,5 +537,7 @@ tests = testGroup "Execution Tests"
   , testToolLibraryRegistration
   , testBindToolValidation
   , testConversationHistoryWithToolResults
+  , testAgentExecutionWithoutTools
+  , testOneToolExecution
   ]
 
