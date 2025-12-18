@@ -5,7 +5,7 @@ module ExecutionTest where
 import Test.Tasty
 import Test.Tasty.HUnit
 import PatternAgent.Language.Core (Agent, Tool, createAgent, createTool, agentTools, toolName, createModel, Provider(..))
-import PatternAgent.Runtime.ToolLibrary (ToolImpl, ToolLibrary, createToolImpl, emptyToolLibrary, registerTool, lookupTool, bindTool, validateToolArgs, toolImplName)
+import PatternAgent.Runtime.ToolLibrary (ToolImpl, ToolLibrary, createToolImpl, emptyToolLibrary, registerTool, lookupTool, bindTool, validateToolArgs, toolImplName, toolImplInvoke)
 import PatternAgent.Runtime.Execution (bindAgentTools, AgentError(..), contextToLLMMessages)
 import PatternAgent.Runtime.Context (ConversationContext, emptyContext, Message(..), MessageRole(..), addMessage)
 import PatternAgent.Runtime.LLM (LLMMessage(..))
@@ -115,7 +115,7 @@ testToolResultHandling = testGroup "Tool Result Handling"
       let functionMsg = head llmMessages
       llmMessageRole functionMsg @?= "function"
       llmMessageName functionMsg @?= Just "sayHello"
-      T.length (llmMessageContent functionMsg) @?> 0
+      assertBool "Function message should have content" (T.length (llmMessageContent functionMsg) > 0)
   
   , testCase "Handle tool result errors" $ do
       let context = emptyContext

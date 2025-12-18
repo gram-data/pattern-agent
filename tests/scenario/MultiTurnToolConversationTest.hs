@@ -55,7 +55,7 @@ testAgentReferencesPreviousToolUsage = testCase "Agent references previous tool 
         Right response2 -> do
           -- Expected: Follow-up message should reference the previous greeting
           -- Response should mention the greeting from turn 1
-          T.length (responseContent response2) @?> 0
+          assertBool "Response should have content" (T.length (responseContent response2) > 0)
           -- The response should be coherent with the conversation history
           -- (Mock LLM should reference previous tool usage)
           return ()
@@ -95,7 +95,7 @@ testMultiTurnConversationCoherence = testCase "Multi-turn conversation maintains
         Left err -> assertFailure $ "Turn 2 failed: " ++ show err
         Right response2 -> do
           -- Response should be coherent with conversation history
-          T.length (responseContent response2) @?> 0
+          assertBool "Response should have content" (T.length (responseContent response2) > 0)
           
           -- Update context
           let context2 = case addMessage UserRole "What did you say?" contextAfterTurn1 of
@@ -111,7 +111,7 @@ testMultiTurnConversationCoherence = testCase "Multi-turn conversation maintains
             Left err -> assertFailure $ "Turn 3 failed: " ++ show err
             Right response3 -> do
               -- All responses should be coherent with full conversation history
-              T.length (responseContent response3) @?> 0
+              assertBool "Response should have content" (T.length (responseContent response3) > 0)
               -- The response should maintain context from previous turns
               return ()
 
@@ -153,7 +153,7 @@ testAgentUsesPreviousToolResults = testCase "Agent uses previous tool results" $
         Right response2 -> do
           -- Expected: Agent should reference the tool result from previous turn
           -- The response should mention the greeting result
-          T.length (responseContent response2) @?> 0
+          assertBool "Response should have content" (T.length (responseContent response2) > 0)
           -- The conversation context includes FunctionRole messages with tool results,
           -- so the agent can reference them
           return ()

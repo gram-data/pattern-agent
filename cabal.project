@@ -1,5 +1,20 @@
 packages: .
-        ../gram-hs/libs/pattern
-        ../gram-hs/libs/subject
-        ../gram-hs/libs/gram
+
+source-repository-package
+  type: git
+  location: https://github.com/gram-data/gram-hs.git
+  branch: main
+  subdir: libs/pattern
+
+source-repository-package
+  type: git
+  location: https://github.com/gram-data/gram-hs.git
+  branch: main
+  subdir: libs/subject
+
+source-repository-package
+  type: git
+  location: https://github.com/gram-data/gram-hs.git
+  branch: main
+  subdir: libs/gram
 
