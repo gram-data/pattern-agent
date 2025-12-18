@@ -7,6 +7,19 @@
 -- including error handling and agent execution logic that uses the
 -- standalone LLM client module.
 --
+-- == Edge Case Handling
+--
+-- This module handles the following edge cases:
+--
+-- * __Tool timeout scenarios__: Tools that take too long are timed out
+-- * __Multiple simultaneous tool calls__: Not currently supported by OpenAI function calling format
+-- * __Agent with no tools but LLM requests tool call__: Returns graceful error
+-- * __Malformed tool call requests from LLM__: Validated and handled with error messages
+-- * __Tool not found in library__: Clear error message returned
+-- * __Tool parameter validation failures__: Detailed validation error returned
+-- * __Tool execution exceptions__: Caught and converted to tool invocation errors
+-- * __Maximum iteration limit__: Prevents infinite tool call loops
+--
 -- This is part of the runtime implementation (Haskell-specific).
 module PatternAgent.Runtime.Execution
   ( -- * Error Types
@@ -22,6 +35,9 @@ module PatternAgent.Runtime.Execution
   , contextToLLMMessages
     -- * Tool Conversion
   , toolsToFunctions
+    -- * Configuration
+  , defaultToolTimeout
+  , maxIterations
   ) where
 
 import PatternAgent.Language.Core (Agent, Tool, Model(..), agentModel, agentInstruction, agentTools, toolName, toolDescription, toolSchema)
@@ -32,26 +48,49 @@ import PatternAgent.Runtime.Context
   , MessageRole(..)
   , addMessage
   )
-import PatternAgent.Runtime.ToolLibrary (ToolLibrary, ToolImpl, bindTool, lookupTool, validateToolArgs, toolImplInvoke, toolImplName, toolImplSchema)
-import Data.Aeson (Value(..), object, (.=), decode, encode, ToJSON(..))
+import PatternAgent.Runtime.ToolLibrary (ToolLibrary, ToolImpl, bindTool, validateToolArgs, toolImplInvoke, toolImplName, toolImplSchema)
+import Data.Aeson (Value(..), object, (.=), decode, ToJSON(..))
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.ByteString.Lazy as BL
 import GHC.Generics (Generic)
-import PatternAgent.Runtime.Logging (logDebug, logInfo, logDebugJSON, loggerExecution)
-import PatternAgent.Runtime.LLM (buildRequest, LLMRequest(..), LLMResponse(..))
+import PatternAgent.Runtime.Logging (logDebug, logDebugJSON, loggerExecution)
+import PatternAgent.Runtime.LLM (buildRequest)
 import Control.Lens (view)
-import Control.Monad (mapM, when)
+import Control.Monad (mapM)
 import Control.Exception (try, SomeException)
-import qualified Data.Map.Strict as Map
+import System.Timeout (timeout)
+
+-- | Default tool timeout in microseconds (30 seconds).
+--
+-- Tools that take longer than this will be terminated and return a timeout error.
+defaultToolTimeout :: Int
+defaultToolTimeout = 30 * 1000000  -- 30 seconds in microseconds
+
+-- | Maximum iteration limit to prevent infinite loops.
+--
+-- The execution loop will terminate after this many tool call iterations.
+maxIterations :: Int
+maxIterations = 10
 
 -- | Error types for agent execution.
+--
+-- These errors cover various failure scenarios during agent execution:
+--
+-- * 'LLMAPIError' - Network or API errors when communicating with LLM
+-- * 'ToolError' - Errors during tool execution (not found, validation, timeout)
+-- * 'ValidationError' - Invalid input or state errors
+-- * 'ConfigurationError' - Missing API keys or invalid agent configuration
+-- * 'ToolTimeoutError' - Tool execution exceeded time limit
+-- * 'UnexpectedToolCallError' - LLM requested tool but agent has no tools
 data AgentError
-  = LLMAPIError Text      -- ^ LLM API call failed
-  | ToolError Text        -- ^ Tool execution failed
-  | ValidationError Text  -- ^ Input validation failed
-  | ConfigurationError Text  -- ^ Agent configuration invalid (e.g., missing API key)
+  = LLMAPIError Text            -- ^ LLM API call failed
+  | ToolError Text              -- ^ Tool execution failed
+  | ValidationError Text        -- ^ Input validation failed
+  | ConfigurationError Text     -- ^ Agent configuration invalid (e.g., missing API key)
+  | ToolTimeoutError Text       -- ^ Tool execution timed out
+  | UnexpectedToolCallError Text -- ^ LLM requested tool but agent has no tools configured
   deriving (Eq, Show, Generic)
 
 -- | Agent response type.
@@ -90,7 +129,7 @@ contextToLLMMessage (Message role content) = LLMMessage
   { llmMessageRole = case role of
       UserRole -> "user"
       AssistantRole -> "assistant"
-      FunctionRole toolName -> "function"
+      FunctionRole _ -> "function"
   , llmMessageContent = content
   , llmMessageName = case role of
       FunctionRole name -> Just name
@@ -163,9 +202,6 @@ executeAgentWithLibrary debug agent userInput context library = do
                   -- Execute iterative loop
                   executeIteration debug client agent boundTools updatedContext [] 0
   where
-    -- Maximum iteration limit to prevent infinite loops
-    maxIterations = 10
-    
     -- Execute one iteration of the tool execution loop
     executeIteration
       :: Bool              -- ^ debug: Enable debug logging
@@ -217,34 +253,41 @@ executeAgentWithLibrary debug agent userInput context library = do
               -- Check if function call is present
               case responseFunctionCall llmResponse of
                 Just functionCall -> do
-                  -- Tool call detected - invoke tool
-                  toolInvocationResult <- invokeToolFromFunctionCall debug functionCall boundTools
-                  case toolInvocationResult of
-                    Left err -> return $ Left err
-                    Right invocation -> do
-                      -- T108: Verify context updates include user message, assistant message with tool call, function message with tool result, and final assistant response
-                      -- Add assistant message with tool call to context
-                      let assistantContent = if T.null (responseText llmResponse)
-                            then "Calling " <> functionCallName functionCall
-                            else responseText llmResponse
-                      logDebug debug loggerExecution $ "Adding assistant message to context: " <> assistantContent
-                      logDebugJSON debug loggerExecution "Tool invocation:" (toJSON invocation)
-                      let assistantMsgResult = addMessage AssistantRole assistantContent context
-                      case assistantMsgResult of
-                        Left err -> return $ Left $ ValidationError err
-                        Right contextWithAssistant -> do
-                          -- T105: Verify conversation context includes FunctionRole messages for tool results
-                          -- Add function message with tool result to context
-                          let functionContent = case invocationResult invocation of
-                                Right val -> T.pack $ show val  -- Simplified - would use proper JSON encoding
-                                Left err -> "Error: " <> err
-                          logDebug debug loggerExecution $ "Adding function message to context: tool=" <> invocationToolName invocation <> ", content=" <> functionContent
-                          let functionMsgResult = addMessage (FunctionRole (invocationToolName invocation)) functionContent contextWithAssistant
-                          case functionMsgResult of
+                  -- Edge case: LLM requested tool but agent has no tools
+                  let agentToolList = view agentTools agent
+                  if null agentToolList && null boundTools
+                    then do
+                      logDebug debug loggerExecution $ "LLM requested tool '" <> functionCallName functionCall <> "' but agent has no tools configured"
+                      return $ Left $ UnexpectedToolCallError $ "LLM requested tool '" <> functionCallName functionCall <> "' but agent has no tools configured"
+                    else do
+                      -- Tool call detected - invoke tool
+                      toolInvocationResult <- invokeToolFromFunctionCall debug functionCall boundTools
+                      case toolInvocationResult of
+                        Left err -> return $ Left err
+                        Right invocation -> do
+                          -- T108: Verify context updates include user message, assistant message with tool call, function message with tool result, and final assistant response
+                          -- Add assistant message with tool call to context
+                          let assistantContent = if T.null (responseText llmResponse)
+                                then "Calling " <> functionCallName functionCall
+                                else responseText llmResponse
+                          logDebug debug loggerExecution $ "Adding assistant message to context: " <> assistantContent
+                          logDebugJSON debug loggerExecution "Tool invocation:" (toJSON invocation)
+                          let assistantMsgResult = addMessage AssistantRole assistantContent context
+                          case assistantMsgResult of
                             Left err -> return $ Left $ ValidationError err
-                            Right contextWithFunction -> do
-                              -- T106: Continue iteration with updated context (context is passed through loop)
-                              executeIteration debug client agent boundTools contextWithFunction (invocation : toolInvocations) (iteration + 1)
+                            Right contextWithAssistant -> do
+                              -- T105: Verify conversation context includes FunctionRole messages for tool results
+                              -- Add function message with tool result to context
+                              let functionContent = case invocationResult invocation of
+                                    Right val -> T.pack $ show val  -- Simplified - would use proper JSON encoding
+                                    Left err -> "Error: " <> err
+                              logDebug debug loggerExecution $ "Adding function message to context: tool=" <> invocationToolName invocation <> ", content=" <> functionContent
+                              let functionMsgResult = addMessage (FunctionRole (invocationToolName invocation)) functionContent contextWithAssistant
+                              case functionMsgResult of
+                                Left err -> return $ Left $ ValidationError err
+                                Right contextWithFunction -> do
+                                  -- T106: Continue iteration with updated context (context is passed through loop)
+                                  executeIteration debug client agent boundTools contextWithFunction (invocation : toolInvocations) (iteration + 1)
                 
                 Nothing -> do
                   -- No function call - final text response
@@ -308,12 +351,16 @@ executeAgentWithLibrary debug agent userInput context library = do
         findToolImpl :: Text -> [ToolImpl] -> Maybe ToolImpl
         findToolImpl name tools = foldr (\tool acc -> if toolImplName tool == name then Just tool else acc) Nothing tools
         
+        -- | Invoke a tool with timeout protection.
+        --
+        -- Tools that exceed the timeout limit will be terminated and return a timeout error.
         tryInvokeTool :: ToolImpl -> Value -> IO (Either Text Value)
         tryInvokeTool impl args = do
-          result <- try (toolImplInvoke impl args) :: IO (Either SomeException Value)
+          result <- timeout defaultToolTimeout $ try (toolImplInvoke impl args) :: IO (Maybe (Either SomeException Value))
           case result of
-            Left ex -> return $ Left $ T.pack $ show ex
-            Right val -> return $ Right val
+            Nothing -> return $ Left $ "Tool execution timed out after " <> T.pack (show (defaultToolTimeout `div` 1000000)) <> " seconds"
+            Just (Left ex) -> return $ Left $ T.pack $ show ex
+            Just (Right val) -> return $ Right val
 
 -- | Bind all agent tools to implementations from library.
 bindAgentTools

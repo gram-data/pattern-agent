@@ -75,8 +75,6 @@ testToolPropertyAccess = testCase "Access tool properties via lenses" $ do
     Left err -> assertFailure $ "Expected Right Tool, got Left: " ++ T.unpack err
 
 -- | Scenario test: Verify tool parameter validation works correctly.
--- NOTE: This test is currently skipped because extractTypeSignatureFromPattern is not yet implemented.
--- Once that function is implemented, toolSchema will return a proper schema and validation will work.
 testToolParameterValidation :: TestTree
 testToolParameterValidation = testCase "Validate tool parameters against schema" $ do
   -- Create a tool with a schema
@@ -87,27 +85,33 @@ testToolParameterValidation = testCase "Validate tool parameters against schema"
     Right tool -> do
       let schema = view toolSchema tool
       
-      -- Since extractTypeSignatureFromPattern is not yet implemented,
-      -- toolSchema returns an empty schema. Skip validation until that's implemented.
-      -- TODO: Re-enable this test when extractTypeSignatureFromPattern is implemented
+      -- Schema should be a JSON object with properties
       case schema of
         Object schemaMap -> 
           case KM.lookup (K.fromText "properties") schemaMap of
-            Just (Object props) -> 
-              if KM.null props
-                then return ()  -- Empty schema expected until extractTypeSignatureFromPattern is implemented
-                else do
-                  -- Test valid parameters (only if schema has properties)
-                  let validArgs = object ["personName" .= ("Alice" :: T.Text)]
-                  case validateToolArgs schema validArgs of
-                    Right _ -> return ()  -- Should succeed
-                    Left err -> assertFailure $ "Valid args should pass validation: " ++ T.unpack err
-            _ -> return ()  -- No properties, skip test
-        _ -> return ()  -- Not an object, skip test
-      
-      -- Since schema is empty (extractTypeSignatureFromPattern not implemented),
-      -- skip these validation tests until that's implemented
-      -- TODO: Re-enable when extractTypeSignatureFromPattern is implemented
+            Just (Object props) -> do
+              -- Schema should have properties now that extractTypeSignatureFromPattern is implemented
+              KM.null props @?= False  -- Should have properties
+              
+              -- Test valid parameters
+              let validArgs = object ["personName" .= ("Alice" :: T.Text)]
+              case validateToolArgs schema validArgs of
+                Right _ -> return ()  -- Should succeed
+                Left err -> assertFailure $ "Valid args should pass validation: " ++ T.unpack err
+              
+              -- Test invalid parameters (missing required field)
+              let invalidArgs = object []  -- Missing personName
+              case validateToolArgs schema invalidArgs of
+                Left _ -> return ()  -- Should fail
+                Right _ -> assertFailure "Invalid args (missing required field) should fail validation"
+              
+              -- Test invalid parameters (wrong type)
+              let wrongTypeArgs = object ["personName" .= (42 :: Int)]
+              case validateToolArgs schema wrongTypeArgs of
+                Left _ -> return ()  -- Should fail
+                Right _ -> assertFailure "Invalid args (wrong type) should fail validation"
+            _ -> assertFailure "Schema should have 'properties' field"
+        _ -> assertFailure "Schema should be a JSON object"
     Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
 
 tests :: TestTree

@@ -241,7 +241,31 @@ createAgent name description model instruction tools
 --
 -- Checks that the agent has required fields and valid structure.
 validateAgent :: Agent -> Either Text ()
-validateAgent agent = undefined -- TODO: Validate Pattern Subject structure
+validateAgent agent = do
+  -- Check Agent label
+  unless ("Agent" `Set.member` labels (value agent)) $
+    Left "Agent must have 'Agent' label"
+  
+  -- Check non-empty name (pattern identifier)
+  let ident = identity (value agent)
+  case ident of
+    Symbol s | T.null (T.pack s) -> Left "Agent must have non-empty name (pattern identifier)"
+    Symbol _ -> return ()
+  
+  -- Check required properties: instruction and model
+  let props = properties (value agent)
+  case Map.lookup "instruction" props of
+    Just (VString inst) | T.null (T.pack inst) -> Left "Agent instruction cannot be empty"
+    Just (VString _) -> return ()
+    _ -> Left "Agent must have 'instruction' property"
+  
+  case Map.lookup "model" props of
+    Just (VString _) -> return ()  -- Model is stored as string, format validation happens elsewhere
+    _ -> Left "Agent must have 'model' property"
+  
+  -- Validate nested tool patterns (if any)
+  let tools = elements agent
+  mapM_ validateTool tools
 
 -- | Create a tool from components (programmatic, no parsing).
 --

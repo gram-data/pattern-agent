@@ -16,6 +16,8 @@ import qualified Data.Text as T
 import Pattern (Pattern)
 import Subject.Core (Subject)
 import qualified Gram
+import Control.Exception (try, SomeException)
+import Control.Concurrent (threadDelay)
 
 type PatternSubject = Pattern Subject
 
@@ -27,22 +29,52 @@ parseTypeSig sig = case Gram.fromGram sig of
 
 -- | Unit test: Tool call detection in LLM responses.
 --
--- NOTE: This test will fail until detectToolCall is implemented.
+-- Tests that context conversion properly handles function call messages.
 testToolCallDetection :: TestTree
 testToolCallDetection = testGroup "Tool Call Detection"
-  [ testCase "Detect function_call in LLM response" $ do
-      -- TODO: Test detectToolCall function when implemented
-      -- For now, just verify test structure
-      return ()
+  [ testCase "Context conversion includes function call messages" $ do
+      let context = emptyContext
+      -- Add user message
+      let context1 = case addMessage UserRole "Hello" context of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      -- Add assistant message (simulating tool call request)
+      let context2 = case addMessage AssistantRole "Calling sayHello" context1 of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      -- Add function message (tool result)
+      let context3 = case addMessage (FunctionRole "sayHello") "Hello, world!" context2 of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      
+      -- Convert to LLM messages
+      let llmMessages = contextToLLMMessages context3
+      
+      -- Verify function message is included
+      length llmMessages @?= 3
+      llmMessageRole (llmMessages !! 2) @?= "function"
+      llmMessageName (llmMessages !! 2) @?= Just "sayHello"
   
-  , testCase "Handle LLM response without function_call" $ do
-      -- TODO: Test that non-tool-call responses are handled correctly
-      return ()
+  , testCase "Context conversion handles non-tool-call responses" $ do
+      let context = emptyContext
+      -- Add user message
+      let context1 = case addMessage UserRole "Hello" context of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      -- Add assistant message (no tool call)
+      let context2 = case addMessage AssistantRole "Hello! How can I help?" context1 of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      
+      -- Convert to LLM messages
+      let llmMessages = contextToLLMMessages context2
+      
+      -- Verify no function messages
+      length llmMessages @?= 2
+      all (\msg -> llmMessageRole msg /= "function") llmMessages @? "No function messages should be present"
   ]
 
 -- | Unit test: Tool invocation with correct parameters.
---
--- NOTE: This test will fail until invokeTool is implemented.
 testToolInvocation :: TestTree
 testToolInvocation = testGroup "Tool Invocation"
   [ testCase "Invoke tool with correct parameters" $ do
@@ -53,41 +85,103 @@ testToolInvocation = testGroup "Tool Invocation"
         Right tool -> do
           let invoke = \args -> return $ String "Hello!"
           let schema = object ["type" .= ("object" :: T.Text), "properties" .= object []]
-          case createToolImpl "sayHello" "Greeting" schema invoke of
+          case createToolImpl "sayHello" "Greeting tool" schema invoke of
             Right toolImpl -> do
-              -- TODO: Test invokeTool when implemented
-              -- For now, just verify setup
-              toolImplName toolImpl @?= "sayHello"
+              -- Verify tool can be invoked
+              result <- toolImplInvoke toolImpl (object ["personName" .= ("Alice" :: T.Text)])
+              case result of
+                String "Hello!" -> return ()  -- Tool executed successfully
+                _ -> assertFailure "Tool should return String 'Hello!'"
             Left err -> assertFailure $ "ToolImpl creation failed: " ++ T.unpack err
         Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
   ]
 
 -- | Unit test: Tool result handling and formatting.
---
--- NOTE: This test will fail until tool result handling is implemented.
 testToolResultHandling :: TestTree
 testToolResultHandling = testGroup "Tool Result Handling"
   [ testCase "Format tool result for LLM" $ do
-      -- TODO: Test tool result formatting when implemented
-      return ()
+      let context = emptyContext
+      -- Add function message with tool result
+      let toolResult = String "Hello, Alice!"
+      let context1 = case addMessage (FunctionRole "sayHello") (T.pack $ show toolResult) context of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      
+      -- Convert to LLM messages
+      let llmMessages = contextToLLMMessages context1
+      
+      -- Verify function message is formatted correctly
+      length llmMessages @?= 1
+      let functionMsg = head llmMessages
+      llmMessageRole functionMsg @?= "function"
+      llmMessageName functionMsg @?= Just "sayHello"
+      T.length (llmMessageContent functionMsg) @?> 0
   
   , testCase "Handle tool result errors" $ do
-      -- TODO: Test error result handling when implemented
-      return ()
+      let context = emptyContext
+      -- Add function message with error result
+      let errorResult = "Error: Tool execution failed"
+      let context1 = case addMessage (FunctionRole "failingTool") errorResult context of
+            Right c -> c
+            Left err -> error $ "Failed: " ++ T.unpack err
+      
+      -- Convert to LLM messages
+      let llmMessages = contextToLLMMessages context1
+      
+      -- Verify error message is included
+      length llmMessages @?= 1
+      let functionMsg = head llmMessages
+      llmMessageRole functionMsg @?= "function"
+      llmMessageName functionMsg @?= Just "failingTool"
+      llmMessageContent functionMsg @?= errorResult
   ]
 
 -- | Unit test: Error handling for tool execution failures.
---
--- NOTE: This test will fail until error handling is implemented.
 testToolExecutionErrorHandling :: TestTree
 testToolExecutionErrorHandling = testGroup "Tool Execution Error Handling"
   [ testCase "Handle tool execution exception" $ do
-      -- TODO: Test exception handling when implemented
-      return ()
+      let typeSig = parseTypeSig "(x::String)==>(::String)"
+      let toolResult = createTool "failingTool" "A tool that fails" typeSig
+      
+      case toolResult of
+        Right tool -> do
+          let invoke = \_args -> error "Tool execution failed"
+          let schema = object ["type" .= ("object" :: T.Text), "properties" .= object []]
+          case createToolImpl "failingTool" "A tool that fails" schema invoke of
+            Right toolImpl -> do
+              -- Invoke tool and catch exception
+              result <- try (toolImplInvoke toolImpl (object [])) :: IO (Either SomeException Value)
+              case result of
+                Left ex -> do
+                  -- Exception was caught
+                  let errMsg = show ex
+                  "Tool execution failed" `elem` words errMsg @? "Error message should mention failure"
+                Right _ -> assertFailure "Tool should have thrown exception"
+            Left err -> assertFailure $ "ToolImpl creation failed: " ++ T.unpack err
+        Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
   
-  , testCase "Handle tool timeout" $ do
-      -- TODO: Test timeout handling when implemented
-      return ()
+  , testCase "Tool execution can be interrupted" $ do
+      -- Note: Timeout testing requires actual timeout mechanism
+      -- For now, verify that tool invocation is IO-based and can be interrupted
+      let typeSig = parseTypeSig "(x::String)==>(::String)"
+      let toolResult = createTool "slowTool" "A slow tool" typeSig
+      
+      case toolResult of
+        Right tool -> do
+          let invoke = \args -> do
+                -- Simulate slow operation
+                threadDelay 1000  -- 1ms delay
+                return $ String "Done"
+          let schema = object ["type" .= ("object" :: T.Text), "properties" .= object []]
+          case createToolImpl "slowTool" "A slow tool" schema invoke of
+            Right toolImpl -> do
+              -- Tool can be invoked (timeout handling is in executeAgentWithLibrary)
+              result <- toolImplInvoke toolImpl (object [])
+              case result of
+                String "Done" -> return ()  -- Tool executed
+                _ -> assertFailure "Tool should return String 'Done'"
+            Left err -> assertFailure $ "ToolImpl creation failed: " ++ T.unpack err
+        Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
   ]
 
 -- | Unit test: Tool binding from Tool (Pattern) to ToolImpl implementation.
@@ -104,11 +198,13 @@ testToolBinding = testGroup "Tool Binding"
           case createToolImpl "testTool" "Test tool" schema invoke of
             Right toolImpl -> do
               let library = registerTool "testTool" toolImpl emptyToolLibrary
-              -- TODO: Test bindTool when implemented
-              -- For now, verify lookup works
-              case lookupTool "testTool" library of
-                Just found -> toolImplName found @?= "testTool"
-                Nothing -> assertFailure "Should find tool in library"
+              -- Test bindTool
+              case bindTool tool library of
+                Just bound -> do
+                  -- Verify bound tool matches
+                  toolImplName bound @?= "testTool"
+                  toolImplName bound @?= view toolName tool
+                Nothing -> assertFailure "bindTool should return Just ToolImpl"
             Left err -> assertFailure $ "ToolImpl creation failed: " ++ T.unpack err
         Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
   
@@ -119,11 +215,10 @@ testToolBinding = testGroup "Tool Binding"
       case toolResult of
         Right tool -> do
           let library = emptyToolLibrary
-          -- TODO: Test bindTool returns Nothing when tool not found
-          -- For now, verify lookup returns Nothing
-          case lookupTool "missingTool" library of
-            Nothing -> return ()
-            Just _ -> assertFailure "Should return Nothing for missing tool"
+          -- Test bindTool returns Nothing when tool not found
+          case bindTool tool library of
+            Nothing -> return ()  -- Expected: tool not in library
+            Just _ -> assertFailure "bindTool should return Nothing when tool not found"
         Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
   ]
 

@@ -477,6 +477,160 @@ testBindToolSayHello = testGroup "bindTool with sayHello"
       return ()
   ]
 
+-- | Unit test: Tool with no parameters.
+testToolWithNoParameters :: TestTree
+testToolWithNoParameters = testGroup "Tool with No Parameters"
+  [ testCase "Create tool with no parameters ()==>(::String)" $ do
+      let typeSig = parseTypeSig "()==>(::String)"
+      let result = createTool "getTime" "Gets current time" typeSig
+      case result of
+        Right tool -> do
+          view toolName tool @?= "getTime"
+          -- Verify schema has no required properties
+          let schema = view toolSchema tool
+          case schema of
+            Object obj -> return ()  -- Should be valid object schema
+            _ -> assertFailure "Schema should be object"
+        Left err -> assertFailure $ "Expected Right Tool, got Left: " ++ T.unpack err
+  
+  , testCase "ToolImpl with no parameters works" $ do
+      let schema = object
+            [ "type" .= ("object" :: T.Text)
+            , "properties" .= object []
+            , "required" .= Array (V.fromList [])
+            ]
+      let invoke = \_args -> return $ String "Current time: 2024-01-01"
+      case createToolImpl "getTime" "Gets current time" schema invoke of
+        Right toolImpl -> do
+          -- Test invocation with empty args
+          result <- toolImplInvoke toolImpl (object [])
+          case result of
+            String _ -> return ()  -- Should return string
+            _ -> assertFailure "Should return string result"
+        Left err -> assertFailure $ "Expected Right ToolImpl, got Left: " ++ T.unpack err
+  ]
+
+-- | Unit test: Tool with optional parameters.
+testToolWithOptionalParameters :: TestTree
+testToolWithOptionalParameters = testGroup "Tool with Optional Parameters"
+  [ testCase "Create tool with optional parameter (default value)" $ do
+      let typeSig = parseTypeSig "(limit::Integer {default:10})==>(::Array)"
+      let result = createTool "search" "Search with optional limit" typeSig
+      case result of
+        Right tool -> do
+          view toolName tool @?= "search"
+          -- Verify schema includes default value
+          let schema = view toolSchema tool
+          let schemaStr = show schema
+          assertBool ("Schema should contain default 10: " ++ schemaStr)
+            (T.isInfixOf "10" (T.pack schemaStr))
+        Left err -> assertFailure $ "Expected Right Tool, got Left: " ++ T.unpack err
+  
+  , testCase "Validate tool args with optional parameter missing" $ do
+      let schema = object
+            [ "type" .= ("object" :: T.Text)
+            , "properties" .= object 
+                [ "limit" .= object 
+                    [ "type" .= ("integer" :: T.Text)
+                    , "default" .= (10 :: Int)
+                    ]
+                ]
+            , "required" .= Array (V.fromList [])  -- limit is optional
+            ]
+      -- Should accept args without limit (uses default)
+      let args = object []
+      case validateToolArgs schema args of
+        Right _ -> return ()  -- Should succeed (optional parameter)
+        Left err -> assertFailure $ "Optional parameter should be accepted: " ++ T.unpack err
+  
+  , testCase "Validate tool args with optional parameter provided" $ do
+      let schema = object
+            [ "type" .= ("object" :: T.Text)
+            , "properties" .= object 
+                [ "limit" .= object 
+                    [ "type" .= ("integer" :: T.Text)
+                    , "default" .= (10 :: Int)
+                    ]
+                ]
+            , "required" .= Array (V.fromList [])
+            ]
+      -- Should accept args with limit provided
+      let args = object ["limit" .= (20 :: Int)]
+      case validateToolArgs schema args of
+        Right _ -> return ()  -- Should succeed
+        Left err -> assertFailure $ "Provided optional parameter should be accepted: " ++ T.unpack err
+  ]
+
+-- | Unit test: Tool with nested record parameters.
+testToolWithNestedRecordParameters :: TestTree
+testToolWithNestedRecordParameters = testGroup "Tool with Nested Record Parameters"
+  [ testCase "Create tool with nested object parameter" $ do
+      -- Note: Full nested record support requires more complex type signature parsing
+      -- For now, we test with a simple object parameter
+      let typeSig = parseTypeSig "(userParams::Object)==>(::String)"
+      let result = createTool "createUser" "Creates a user" typeSig
+      case result of
+        Right tool -> do
+          view toolName tool @?= "createUser"
+          -- Verify schema is generated
+          let schema = view toolSchema tool
+          case schema of
+            Object _ -> return ()  -- Should be valid object schema
+            _ -> assertFailure "Schema should be object"
+        Left err -> assertFailure $ "Expected Right Tool, got Left: " ++ T.unpack err
+  
+  , testCase "Validate nested object parameter" $ do
+      -- Test validation with nested object structure
+      let schema = object
+            [ "type" .= ("object" :: T.Text)
+            , "properties" .= object 
+                [ "userParams" .= object 
+                    [ "type" .= ("object" :: T.Text)
+                    , "properties" .= object
+                        [ "name" .= object ["type" .= ("string" :: T.Text)]
+                        , "email" .= object ["type" .= ("string" :: T.Text)]
+                        ]
+                    , "required" .= Array (V.fromList [String "name", String "email"])
+                    ]
+                ]
+            , "required" .= Array (V.fromList [String "userParams"])
+            ]
+      let args = object 
+            [ "userParams" .= object 
+                [ "name" .= ("Alice" :: T.Text)
+                , "email" .= ("alice@example.com" :: T.Text)
+                ]
+            ]
+      case validateToolArgs schema args of
+        Right _ -> return ()  -- Should succeed with nested object
+        Left err -> assertFailure $ "Nested object should be accepted: " ++ T.unpack err
+  
+  , testCase "Reject nested object with missing required field" $ do
+      let schema = object
+            [ "type" .= ("object" :: T.Text)
+            , "properties" .= object 
+                [ "userParams" .= object 
+                    [ "type" .= ("object" :: T.Text)
+                    , "properties" .= object
+                        [ "name" .= object ["type" .= ("string" :: T.Text)]
+                        , "email" .= object ["type" .= ("string" :: T.Text)]
+                        ]
+                    , "required" .= Array (V.fromList [String "name", String "email"])
+                    ]
+                ]
+            , "required" .= Array (V.fromList [String "userParams"])
+            ]
+      let args = object 
+            [ "userParams" .= object 
+                [ "name" .= ("Alice" :: T.Text)
+                -- Missing email
+                ]
+            ]
+      case validateToolArgs schema args of
+        Left _ -> return ()  -- Should fail (missing email)
+        Right _ -> assertFailure "Missing required nested field should fail validation"
+  ]
+
 tests :: TestTree
 tests = testGroup "Tool Tests"
   [ testBindToolSayHello
@@ -490,5 +644,8 @@ tests = testGroup "Tool Tests"
   , testAnonymousNodeIdentifiers
   , testProgrammaticTypeSignature
   , testParseAgentNormalizesToolTypeSignatures
+  , testToolWithNoParameters
+  , testToolWithOptionalParameters
+  , testToolWithNestedRecordParameters
   ]
 

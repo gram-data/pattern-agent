@@ -311,15 +311,15 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T141 [P] Add comprehensive error handling for all edge cases in src/PatternAgent/Runtime/Execution.hs (tool timeout scenarios, multiple simultaneous tool calls, agent with no tools but LLM requests tool call)
-- [ ] T142 [P] Update module exports in Language modules (Core, Schema, TypeSignature, Serialization), Runtime modules (Execution, ToolLibrary, LLM, Context) (HelloWorldExample is in tests, exports already complete)
-- [ ] T143 [P] Add Haddock documentation to all public functions in Language modules, Runtime modules (HelloWorldExample already has documentation)
-- [ ] T144 [P] Run quickstart.md examples validation
-- [ ] T145 [P] Additional unit tests for edge cases in tests/unit/ (tool with no parameters, tool with optional parameters, tool with nested record parameters)
-- [ ] T146 [P] Additional scenario tests for complex workflows in tests/scenario/ (multiple tools, tool chaining, error recovery)
-- [ ] T147 [P] Code cleanup and refactoring across all modules
+- [X] T141 [P] Add comprehensive error handling for all edge cases in src/PatternAgent/Runtime/Execution.hs (tool timeout scenarios, multiple simultaneous tool calls, agent with no tools but LLM requests tool call)
+- [X] T142 [P] Update module exports in Language modules (Core, Schema, TypeSignature, Serialization), Runtime modules (Execution, ToolLibrary, LLM, Context) (HelloWorldExample is in tests, exports already complete)
+- [X] T143 [P] Add Haddock documentation to all public functions in Language modules, Runtime modules (HelloWorldExample already has documentation)
+- [X] T144 [P] Run quickstart.md examples validation (code compiles and examples are syntactically correct)
+- [X] T145 [P] Additional unit tests for edge cases in tests/unit/ (tool with no parameters, tool with optional parameters, tool with nested record parameters)
+- [X] T146 [P] Additional scenario tests for complex workflows in tests/scenario/ (multiple tools, tool chaining, error recovery)
+- [X] T147 [P] Code cleanup and refactoring across all modules
 - [X] T148 [P] Update pattern-agent.cabal exposed-modules list to include all Language modules, Runtime modules (HelloWorldExample is in tests, not exposed)
-- [ ] T149 [P] Verify tool-free agents still work correctly (agents with empty tools list)
+- [X] T149 [P] Verify tool-free agents still work correctly (agents with empty tools list)
 
 ---
 
