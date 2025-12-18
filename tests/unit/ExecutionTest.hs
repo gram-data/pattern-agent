@@ -4,7 +4,7 @@ module ExecutionTest where
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import PatternAgent.Language.Core (Agent, Tool, createAgent, createTool, agentTools, toolName, createModel, Provider(..))
+import PatternAgent.Language.Core (Agent, Tool, createAgent, createTool, agentTools, toolName, toolSchema, createModel, Provider(..))
 import PatternAgent.Runtime.ToolLibrary (ToolImpl, ToolLibrary, createToolImpl, emptyToolLibrary, registerTool, lookupTool, bindTool, validateToolArgs, toolImplName, toolImplInvoke)
 import PatternAgent.Runtime.Execution (bindAgentTools, AgentError(..), contextToLLMMessages)
 import PatternAgent.Runtime.Context (ConversationContext, emptyContext, Message(..), MessageRole(..), addMessage)
@@ -155,7 +155,7 @@ testToolExecutionErrorHandling = testGroup "Tool Execution Error Handling"
                 Left ex -> do
                   -- Exception was caught
                   let errMsg = show ex
-                  "Tool execution failed" `elem` words errMsg @? "Error message should mention failure"
+                  T.isInfixOf "Tool execution failed" (T.pack errMsg) @? "Error message should mention failure"
                 Right _ -> assertFailure "Tool should have thrown exception"
             Left err -> assertFailure $ "ToolImpl creation failed: " ++ T.unpack err
         Left err -> assertFailure $ "Tool creation failed: " ++ T.unpack err
@@ -194,7 +194,7 @@ testToolBinding = testGroup "Tool Binding"
       case toolResult of
         Right tool -> do
           let invoke = \args -> return args
-          let schema = object ["type" .= ("object" :: T.Text), "properties" .= object []]
+          let schema = view toolSchema tool  -- Use the actual schema from the tool
           case createToolImpl "testTool" "Test tool" schema invoke of
             Right toolImpl -> do
               let library = registerTool "testTool" toolImpl emptyToolLibrary

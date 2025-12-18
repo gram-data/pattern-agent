@@ -30,6 +30,7 @@ module PatternAgent.Language.Core
     -- * Tool Creation
   , createTool
   , validateTool
+  , normalizeTypeSignaturePattern
     -- * Model Creation
   , createModel
   ) where
@@ -48,6 +49,7 @@ import qualified Data.List as List
 import Subject.Value (Value(..))
 import qualified Gram
 import PatternAgent.Language.TypeSignature (typeSignatureToJSONSchema, extractTypeSignatureFromPattern, validateTypeSignature)
+import qualified Data.Set as Set
 
 -- | Model provider enumeration.
 data Provider
@@ -283,8 +285,11 @@ createTool name description typeSigPattern
   | T.null name = Left "Tool name cannot be empty"
   | T.null description = Left "Tool description cannot be empty"
   | otherwise = do
+      -- Normalize type signature pattern to ensure FunctionType label is present
+      let normalizedTypeSig = normalizeTypeSignaturePattern typeSigPattern
+      
       -- Validate the pattern represents a valid type signature
-      _ <- validateTypeSignature typeSigPattern
+      _ <- validateTypeSignature normalizedTypeSig
       
       -- Construct Pattern Subject with Tool label, description property, and type signature as element
       let subject = Subject
@@ -292,7 +297,40 @@ createTool name description typeSigPattern
             , labels = Set.fromList ["Tool"]
             , properties = Map.fromList [("description", VString (T.unpack description))]
             }
-      Right $ patternWith subject [typeSigPattern]
+      Right $ patternWith subject [normalizedTypeSig]
+
+-- | Normalize type signature pattern by inferring FunctionType label.
+--
+-- When a type signature pattern (path notation with function arrows) doesn't
+-- have a FunctionType label, we infer it from context. This allows gram notation
+-- to omit the label for cleaner syntax: (personName::Text)==>(::String)
+--
+-- Path notation like (a)==>(b) is parsed by gram-hs into relationship patterns.
+-- The `==>` is syntax, not an identifier - when parsed, it becomes an anonymous
+-- relationship pattern with 2 elements (source and target nodes).
+--
+-- Inference rules:
+-- - Pattern has exactly 2 elements (relationship pattern structure: source -> target) -> add FunctionType label
+-- - Pattern contains nested patterns -> recursively normalize those patterns
+-- - Pattern doesn't already have FunctionType label
+normalizeTypeSignaturePattern :: Pattern Subject -> Pattern Subject
+normalizeTypeSignaturePattern patternElem =
+  let subject = value patternElem
+      currentLabels = labels subject
+      elemCount = length (elements patternElem)
+      -- Recursively normalize nested elements (for curried functions)
+      normalizedElements = map normalizeTypeSignaturePattern (elements patternElem)
+  in
+    -- Infer FunctionType if:
+    -- 1. Pattern has exactly 2 elements (relationship pattern structure: source -> target)
+    -- 2. Doesn't already have FunctionType label
+    -- Note: The relationship may be anonymous (no identifier) - that's fine, we're checking structure
+    if elemCount == 2 && not ("FunctionType" `Set.member` currentLabels)
+      then patternElem 
+        { value = subject { labels = Set.insert "FunctionType" currentLabels }
+        , elements = normalizedElements
+        }
+      else patternElem { elements = normalizedElements }
 
 -- | Validate a tool pattern structure.
 --

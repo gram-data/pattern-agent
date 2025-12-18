@@ -21,7 +21,7 @@ module PatternAgent.Language.Serialization
   , toolFromJSON
   ) where
 
-import PatternAgent.Language.Core (Agent, Tool)
+import PatternAgent.Language.Core (Agent, Tool, normalizeTypeSignaturePattern)
 import Pattern (Pattern)
 import Pattern.Core (value, elements, patternWith)
 import Subject.Core (Subject(..), Symbol(..))
@@ -66,44 +66,6 @@ parseAgent gram = do
     normalizeToolPattern toolPattern =
       let normalizedElements = map normalizeTypeSignaturePattern (elements toolPattern)
       in toolPattern { elements = normalizedElements }
-
--- | Normalize type signature pattern by inferring FunctionType label.
---
--- When a type signature pattern (path notation with function arrows) doesn't
--- have a FunctionType label, we infer it from context. This allows gram notation
--- to omit the label for cleaner syntax: (personName::Text)==>(::String)
---
--- Path notation like (a)==>(b) is parsed by gram-hs into relationship patterns.
--- The `==>` is syntax, not an identifier - when parsed, it becomes an anonymous
--- relationship pattern with 2 elements (source and target nodes).
---
--- Works for both simple and curried function signatures:
--- - Simple: (personName::Text)==>(::String) -> relationship pattern with 2 elements
--- - Curried: (personName::String)==>(repetitionCount::Integer)==>(::String) 
---   -> pattern containing multiple relationship patterns, each with 2 elements
---
--- Inference rules:
--- - Pattern has exactly 2 elements (relationship pattern: source -> target) -> add FunctionType label
--- - Pattern contains nested patterns -> recursively normalize those patterns
--- - Pattern doesn't already have FunctionType label
-normalizeTypeSignaturePattern :: PatternSubject -> PatternSubject
-normalizeTypeSignaturePattern patternElem =
-  let subject = value patternElem
-      currentLabels = labels subject
-      elemCount = length (elements patternElem)
-      -- Recursively normalize nested elements (for curried functions)
-      normalizedElements = map normalizeTypeSignaturePattern (elements patternElem)
-  in
-    -- Infer FunctionType if:
-    -- 1. Pattern has exactly 2 elements (relationship pattern structure: source -> target)
-    -- 2. Doesn't already have FunctionType label
-    -- Note: The relationship may be anonymous (no identifier) - that's fine, we're checking structure
-    if elemCount == 2 && not ("FunctionType" `Set.member` currentLabels)
-      then patternElem 
-        { value = subject { labels = Set.insert "FunctionType" currentLabels }
-        , elements = normalizedElements
-        }
-      else patternElem { elements = normalizedElements }
 
 -- | Parse tool from gram notation.
 --

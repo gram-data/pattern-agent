@@ -158,7 +158,7 @@ validateToolArgs schema args = case (schema, args) of
         Just fieldSchema -> do
           _ <- validateFieldType fieldSchema val
           return validated
-        Nothing -> Left $ "Unknown field: " <> fieldName
+        Nothing -> return validated  -- Allow extra fields
       ) (Right args) argMap
     
   (_, Object _) -> Left "Schema must be an object"
@@ -166,11 +166,11 @@ validateToolArgs schema args = case (schema, args) of
   where
     validateFieldType fieldSchema fieldValue = case fieldSchema of
       Object fieldMap -> case KM.lookup (K.fromText "type") fieldMap of
-        Just (String t) -> validateType t fieldValue
+        Just (String t) -> validateType t fieldValue fieldSchema
         _ -> Right ()  -- No type specified, allow it
       _ -> Right ()  -- Not an object schema, allow it
     
-    validateType expectedType fieldValue = case (expectedType, fieldValue) of
+    validateType expectedType fieldValue fieldSchema = case (expectedType, fieldValue) of
       ("string", String _) -> Right ()
       ("string", _) -> Left "Field must be a string"
       ("integer", Number _) -> Right ()  -- JSON numbers can be integers
@@ -179,7 +179,17 @@ validateToolArgs schema args = case (schema, args) of
       ("number", _) -> Left "Field must be a number"
       ("boolean", Bool _) -> Right ()
       ("boolean", _) -> Left "Field must be a boolean"
-      ("object", Object _) -> Right ()
+      ("object", Object objValue) -> 
+        -- Recursively validate nested object if it has properties
+        case fieldSchema of
+          Object schemaMap -> 
+            case KM.lookup (K.fromText "properties") schemaMap of
+              Just (Object _) -> 
+                case validateToolArgs fieldSchema fieldValue of
+                  Right _ -> Right ()
+                  Left err -> Left err
+              _ -> Right ()  -- No properties to validate
+          _ -> Right ()
       ("object", _) -> Left "Field must be an object"
       ("array", Array _) -> Right ()
       ("array", _) -> Left "Field must be an array"
