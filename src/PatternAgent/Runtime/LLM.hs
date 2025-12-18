@@ -1,21 +1,24 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
--- | Standalone LLM API client.
+-- | LLM API client (Runtime).
 --
 -- This module provides a standalone client for sending requests to LLM APIs.
 -- It handles provider configuration, API key management, HTTP requests,
 -- and response parsing.
-module PatternAgent.LLM
+--
+-- This is part of the runtime implementation (Haskell-specific).
+module PatternAgent.Runtime.LLM
   ( -- * Types
-    Provider(..)
-  , Model(..)
-  , LLMClient(..)
+    LLMClient(..)
   , LLMRequest(..)
   , LLMResponse(..)
-  , Message(..)
+  , LLMMessage(..)
+  , FunctionCall(..)
   , Usage(..)
-    -- * Model Creation
+    -- * Re-exported from Language
+  , Provider(..)
+  , Model(..)
   , createModel
     -- * Client Creation
   , createOpenAIClient
@@ -48,22 +51,9 @@ import GHC.Generics (Generic)
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS
 import Network.HTTP.Types (status200)
+import PatternAgent.Language.Core (Provider(..), Model(..), createModel)
 import PatternAgent.Env (loadEnvFile)
 import System.Environment (lookupEnv)
-
--- | LLM Provider enumeration.
-data Provider
-  = OpenAI
-  | Anthropic
-  | Google
-  deriving (Eq, Show, Generic)
-
--- | Model type representing an LLM model identifier and provider.
-data Model = Model
-  { modelId :: Text
-  , modelProvider :: Provider
-  }
-  deriving (Eq, Show, Generic)
 
 -- | LLM Client configuration.
 data LLMClient = LLMClient
@@ -76,16 +66,25 @@ data LLMClient = LLMClient
 -- | LLM API request payload.
 data LLMRequest = LLMRequest
   { requestModel :: Text
-  , requestMessages :: [Message]
+  , requestMessages :: [LLMMessage]
   , requestTemperature :: Maybe Double
   , requestMaxTokens :: Maybe Int
+  , requestFunctions :: Maybe [Value]  -- ^ OpenAI functions array (tool definitions)
   }
   deriving (Eq, Show, Generic)
 
--- | Message in LLM request.
-data Message = Message
-  { messageRole :: Text  -- "user", "assistant", "system"
-  , messageContent :: Text
+-- | Message in LLM request (runtime format, different from Language).
+data LLMMessage = LLMMessage
+  { llmMessageRole :: Text  -- "user", "assistant", "system", "function"
+  , llmMessageContent :: Text
+  , llmMessageName :: Maybe Text  -- ^ Tool name for function role messages
+  }
+  deriving (Eq, Show, Generic)
+
+-- | Function call from LLM response.
+data FunctionCall = FunctionCall
+  { functionCallName :: Text      -- ^ Tool name to invoke
+  , functionCallArguments :: Text -- ^ JSON string of arguments
   }
   deriving (Eq, Show, Generic)
 
@@ -94,8 +93,17 @@ data LLMResponse = LLMResponse
   { responseText :: Text
   , responseModel :: Text
   , responseUsage :: Maybe Usage
+  , responseFunctionCall :: Maybe FunctionCall  -- ^ Function call if LLM wants to invoke a tool
   }
   deriving (Eq, Show, Generic)
+
+instance ToJSON LLMResponse where
+  toJSON resp = object $
+    [ "text" .= responseText resp
+    , "model" .= responseModel resp
+    ] ++
+    maybe [] (\u -> ["usage" .= u]) (responseUsage resp) ++
+    maybe [] (\fc -> ["function_call" .= fc]) (responseFunctionCall resp)
 
 -- | Token usage information.
 data Usage = Usage
@@ -110,10 +118,6 @@ data ApiKeyError
   = ApiKeyNotFound Text
   | ApiKeyInvalid Text
   deriving (Eq, Show)
-
--- | Create a model identifier for a specific provider.
-createModel :: Text -> Provider -> Model
-createModel modelId provider = Model { modelId = modelId, modelProvider = provider }
 
 -- | Create an OpenAI client from API key.
 createOpenAIClient :: Text -> LLMClient
@@ -159,16 +163,17 @@ loadApiKeyFromEnv envVar = do
       envVar <> " environment variable not set (checked both environment and .env file)"
 
 -- | Build an LLM request for OpenAI format.
-buildOpenAIRequest :: Model -> Text -> [Message] -> Maybe Double -> Maybe Int -> LLMRequest
-buildOpenAIRequest model systemInstruction messages temperature maxTokens = LLMRequest
+buildOpenAIRequest :: Model -> Text -> [LLMMessage] -> Maybe Double -> Maybe Int -> Maybe [Value] -> LLMRequest
+buildOpenAIRequest model systemInstruction messages temperature maxTokens functions = LLMRequest
   { requestModel = modelId model
-  , requestMessages = Message "system" systemInstruction : messages
+  , requestMessages = LLMMessage "system" systemInstruction Nothing : messages
   , requestTemperature = temperature
   , requestMaxTokens = maxTokens
+  , requestFunctions = functions
   }
 
 -- | Build an LLM request (generic, delegates to provider-specific builder).
-buildRequest :: Model -> Text -> [Message] -> Maybe Double -> Maybe Int -> LLMRequest
+buildRequest :: Model -> Text -> [LLMMessage] -> Maybe Double -> Maybe Int -> Maybe [Value] -> LLMRequest
 buildRequest = buildOpenAIRequest  -- For now, default to OpenAI format
 
 -- | Send a request to the LLM API.
@@ -230,7 +235,10 @@ parseOpenAIResponse value = case parseMaybe parseOpenAIResponse' value of
         [] -> fail "No choices in response"
         (c:_) -> return c
       message <- firstChoice .: "message"
-      content <- message .: "content"
+      content <- message .:? "content"  -- content may be null for function calls
+      let contentText = case content of
+            Just (String s) -> s
+            _ -> ""  -- Empty content when function_call is present
       model <- obj .: "model"
       usage <- obj .:? "usage"
       usageData <- case usage of
@@ -240,7 +248,15 @@ parseOpenAIResponse value = case parseMaybe parseOpenAIResponse' value of
           totalTokens <- u .: "total_tokens"
           return $ Just $ Usage promptTokens completionTokens totalTokens
         Nothing -> return Nothing
-      return $ LLMResponse content model usageData
+      -- Parse function_call if present
+      functionCall <- message .:? "function_call"
+      functionCallData <- case functionCall of
+        Just fc -> do
+          name <- fc .: "name"
+          arguments <- fc .: "arguments"
+          return $ Just $ FunctionCall name arguments
+        Nothing -> return Nothing
+      return $ LLMResponse contentText model usageData functionCallData
 
 -- | Parse LLM response (generic, delegates to provider-specific parser).
 parseResponse :: Provider -> Value -> Either Text LLMResponse
@@ -250,23 +266,25 @@ parseResponse provider value = case provider of
   Google -> Left "Google response parsing not yet implemented"
 
 -- | Call LLM API (high-level interface).
-callLLM :: LLMClient -> Model -> Text -> [Message] -> Maybe Double -> Maybe Int -> IO (Either Text LLMResponse)
-callLLM client model systemInstruction messages temperature maxTokens = do
-  let request = buildRequest model systemInstruction messages temperature maxTokens
+callLLM :: LLMClient -> Model -> Text -> [LLMMessage] -> Maybe Double -> Maybe Int -> Maybe [Value] -> IO (Either Text LLMResponse)
+callLLM client model systemInstruction messages temperature maxTokens functions = do
+  let request = buildRequest model systemInstruction messages temperature maxTokens functions
   sendRequest client request
 
 -- Aeson instances for JSON serialization
-instance ToJSON Message where
-  toJSON msg = object
-    [ "role" .= messageRole msg
-    , "content" .= messageContent msg
-    ]
+instance ToJSON LLMMessage where
+  toJSON msg = object $
+    [ "role" .= llmMessageRole msg
+    , "content" .= llmMessageContent msg
+    ] ++
+    maybe [] (\name -> ["name" .= name]) (llmMessageName msg)
 
-instance FromJSON Message where
-  parseJSON = withObject "Message" $ \obj -> do
+instance FromJSON LLMMessage where
+  parseJSON = withObject "LLMMessage" $ \obj -> do
     role <- obj .: "role"
     content <- obj .: "content"
-    return $ Message role content
+    name <- obj .:? "name"
+    return $ LLMMessage role content name
 
 instance ToJSON LLMRequest where
   toJSON req = object $
@@ -274,7 +292,20 @@ instance ToJSON LLMRequest where
     , "messages" .= requestMessages req
     ] ++
     maybe [] (\t -> ["temperature" .= t]) (requestTemperature req) ++
-    maybe [] (\m -> ["max_tokens" .= m]) (requestMaxTokens req)
+    maybe [] (\m -> ["max_tokens" .= m]) (requestMaxTokens req) ++
+    maybe [] (\f -> ["functions" .= f]) (requestFunctions req)
+
+instance ToJSON FunctionCall where
+  toJSON fc = object
+    [ "name" .= functionCallName fc
+    , "arguments" .= functionCallArguments fc
+    ]
+
+instance FromJSON FunctionCall where
+  parseJSON = withObject "FunctionCall" $ \obj -> do
+    name <- obj .: "name"
+    arguments <- obj .: "arguments"
+    return $ FunctionCall name arguments
 
 instance ToJSON Usage where
   toJSON usage = object

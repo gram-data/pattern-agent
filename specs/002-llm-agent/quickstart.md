@@ -15,8 +15,8 @@
 Create a basic agent that answers questions using only its built-in knowledge.
 
 ```haskell
-import PatternAgent.Agent
-import PatternAgent.Execution
+import PatternAgent.Language.Core
+import PatternAgent.Runtime.Execution
 
 main :: IO ()
 main = do
@@ -53,9 +53,9 @@ The capital of France is Paris.
 Create an agent that uses a tool to look up information.
 
 ```haskell
-import PatternAgent.Agent
-import PatternAgent.Execution
-import PatternAgent.Tool
+import PatternAgent.Language.Core
+import PatternAgent.Runtime.Execution
+import PatternAgent.Runtime.ToolLibrary
 import Data.Aeson
 import Data.Text
 
@@ -126,8 +126,8 @@ Tools Used:
 Create an agent that maintains conversation context across multiple exchanges.
 
 ```haskell
-import PatternAgent.Agent
-import PatternAgent.Execution
+import PatternAgent.Language.Core
+import PatternAgent.Runtime.Execution
 
 main :: IO ()
 main = do

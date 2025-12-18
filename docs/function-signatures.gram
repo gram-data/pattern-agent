@@ -1,0 +1,40 @@
+
+//////////////////////////////
+// simple 1-parameter function
+
+// anonymous function from string to string
+(:String)==>(:String)               
+
+// named function `sayHello` from string to string
+(:String)-[sayHello]->(:String)
+
+// labeled, and named function `sayHello` from string to string
+(:String)-[sayHello:Func]->(:String)
+
+// annotated, labeled and named function `sayHello` from string to string
+@description("Produce a friendly, personalized greeting")
+(:String)-[sayHello:Func]->(:String)
+
+////////////////////////
+// 2-parameter functions
+
+// anonymous function with two parameters (integer and string) to string
+(:Integer)==>(:String)==>(:String)
+
+// named function with two parameters. 
+// problem: must be composition of two functions?
+(:Integer)=[repeat]=>(:String)=[sayHello]=>(:String)
+
+// named function with two paramters using annotation
+@name("repeatHello")
+@description("Produces a personalized greeting, repeating multiple time.")
+(:Integer)==>(:String)==>(:String)
+
+// named function with named parameters
+// problem: `repetitions` and `name` must be globally unique
+@name("repeatHello")
+@description("Produces a personalized greeting, repeating multiple time.")
+(repetitions:Integer)==>(name:String)==>(:String)
+
+// named function using pattern notation
+[:Function {name:"repeatHello", description:"Produce repeated greeting"} | (repetitions:Integer)==>(name:String)==>(:String)]

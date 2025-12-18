@@ -1,9 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
--- | Conversation context management.
+-- | Conversation context management (Runtime).
 --
 -- This module provides types and functions for managing conversation
--- context (message history) in multi-turn conversations.
-module PatternAgent.Context
+-- context (message history) in multi-turn conversations during agent execution.
+--
+-- This is part of the runtime implementation (Haskell-specific).
+module PatternAgent.Runtime.Context
   ( -- * Types
     MessageRole(..)
   , Message(..)
@@ -22,6 +24,7 @@ import qualified Data.Text as T
 data MessageRole
   = UserRole
   | AssistantRole
+  | FunctionRole Text  -- ^ Function role for tool results (tool name)
   deriving (Eq, Show)
 
 -- | A single message in a conversation.
