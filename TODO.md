@@ -45,10 +45,10 @@
 
 ## 3. Execution
 
-- [ ] **Principle 2: Why Before How** - Document user goal and rationale for execution environment
-  - [ ] No separate documentation for execution environment rationale (covered in 002-llm-agent spec)
+- [x] **Principle 2: Why Before How** - Document user goal and rationale for execution environment
+  - [x] Documented in specs/004-agent-execution/spec.md with user goal and rationale for scenario tests, interactive CLI, and observability
 - [ ] **Principle 1: Design-Driven Development** - Validate execution environment design against user goal
-  - [ ] No separate validation for execution environment (covered in 002-llm-agent plan)
+  - [ ] Design validation to be completed during planning phase per Principle 1
 - [x] Create basic module for calling an LLM API (Principle 4: expressive API design)
   - [x] Comprehensive LLM.hs module with createClientForModel, callLLM, sendRequest, etc.
 - [x] Design execution environment that "runs the agent" (validate against user goal)
@@ -69,19 +69,25 @@
       - [x] AgentTest.hs covers agent definition
       - [x] LLM module has comprehensive functionality (no dedicated unit tests but used in execution)
     - [ ] Scenario test: user goal satisfaction (e.g., "user can have a conversation with agent")
-      - [ ] No formal scenario test for conversation loop execution
+      - [ ] Spec created in specs/004-agent-execution/spec.md for scenario tests with zero/one/multiple tools
+      - [ ] Implementation pending
   - [ ] Execute agent in conversation loop
     - [x] Infrastructure exists (Context.hs, executeAgent accepts context)
-    - [ ] No formal test demonstrating conversation loop
+    - [ ] Interactive CLI mode spec created in specs/004-agent-execution/spec.md
+    - [ ] Implementation pending
   - [ ] Validate basic conversational behavior
-    - [ ] No formal validation test
+    - [ ] Scenario tests spec created in specs/004-agent-execution/spec.md
+    - [ ] Implementation pending
 - [ ] Design execution semantics for Pattern<Agent> (validate against user goals)
   - [ ] Only single agent execution exists, no pattern execution semantics
 - [ ] Implement basic pattern execution engine (Principle 4: expressiveness and correctness)
   - [ ] Only single agent execution exists, no pattern execution engine
 - [ ] **Principle 3: Dual Testing Strategy** - Unit tests and scenario tests for execution engine
-  - [ ] No dedicated execution engine tests (only single agent execution exists)
+  - [ ] Scenario tests spec created in specs/004-agent-execution/spec.md for zero/one/multiple tools
+  - [ ] Implementation pending
 - [ ] Support for execution visualization
+  - [ ] Observability infrastructure spec created in specs/004-agent-execution/spec.md
+  - [ ] Implementation pending (researching best practices and integration options)
 - [ ] Document execution semantics and DAG interpretation
 
 ## 4. Decomposition (Factorization)
